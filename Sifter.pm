@@ -949,13 +949,13 @@ sub _parse#()
 
 	my $fp;
 	local *fp;
-	if(!(open($fp, "<$this->{template_file}")))
+	if(!(open(*fp, "<$this->{template_file}")))
 	{
 		print("$this->{top}->{package}: Cannot open file '$this->{template_file}'.\n");
 		return undef;
 	}
 
-	$this->{fp} = $fp;
+	$this->{fp} = *fp;
 
 	my $line_break = $/;
 	$/ = $Sifter::LINE_BREAK if(defined($Sifter::LINE_BREAK));
@@ -963,7 +963,7 @@ sub _parse#()
 	if(!$this->{contents}->_parse())
 	{
 		$/ = $line_break;
-		close($fp);
+		close(*fp);
 
 		if(!defined($this->{parent}))
 		{
@@ -974,7 +974,7 @@ sub _parse#()
 	}
 
 	$/ = $line_break;
-	close($fp);
+	close(*fp);
 	return 1;
 }
 
