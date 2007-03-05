@@ -1232,7 +1232,7 @@ class Sifter
 			if(isset($values[$name]))
 			{
 				if(preg_match('/(<textarea\b.*?>).*?(<\/textarea>)/is', $str, $matches))
-					$str = $matches[1].quotemeta($values[$name]).$matches[2];
+					$str = $matches[1].$values[$name].$matches[2];
 			}
 		}
 		else if(strcasecmp($element, 'select') == 0)
