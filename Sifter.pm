@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.0
+# @version		1.1.1
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -104,15 +104,15 @@ $VERSION = '1.0100';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
-$SIFTER_DECIMAL_EXPRESSION = '-?(?:\\d*?\\.\\d+|\\d+\\.?)';
-$SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\\w*?)(\\s*[\\+\\-\\*\\/%]\\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?';
-$SIFTER_EMBED_EXPRESSION = '<(?:input|\\/?select)\\b.*?>|<option\\b.*?>.*?(?:<\\/option>|[\\r\\n])|<textarea\\b.*?>.*?<\\/textarea>';
+$SIFTER_DECIMAL_EXPRESSION = '-?(?:\d*?\.\d+|\d+\.?)';
+$SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?';
+$SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>';
 
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
 $SIFTER_CONTROL_TAG_END = '-->';
 $SIFTER_CONTROL_PATTERN = "^((.*?)(".$SIFTER_CONTROL_TAG_BGN.$SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.")(.*))\$";
-$SIFTER_REPLACE_TAG_BGN = '\\{';
-$SIFTER_REPLACE_TAG_END = '\\}';
+$SIFTER_REPLACE_TAG_BGN = '\{';
+$SIFTER_REPLACE_TAG_END = '\}';
 $SIFTER_REPLACE_PATTERN = $SIFTER_REPLACE_TAG_BGN.$SIFTER_REPLACE_EXPRESSION.$SIFTER_REPLACE_TAG_END;
 
 $SIFTER_SELECT_NAME = '';
@@ -1290,9 +1290,9 @@ sub _check_condition#($condition)
 	}
 	else
 	{
-		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$5}$6/go;
+		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$6}$7/go;
 		$condition =~ s/($elem3)/Sifter::_escape_replace_tags($1)/ego;
-		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($5).")"/ego;
+		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($6).")"/ego;
 		$condition =~ s/$elem1/\${\$replace}{'$1'}/go;
 
 		return Sifter::_unescape_replace_tags($condition);
@@ -1303,13 +1303,15 @@ sub _check_condition#($condition)
 # Called by function format()
 # 
 # @return	string	Formatted value
-# @param	string	$value  Value
-# @param	string	$comma  If this parameter is set, numeric value will be converted to comma formatted value
+# @param	string	$value    Value
+# @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
+# @param	string	$options  Options
 ##
-sub _format#($value, $comma='')
+sub _format#($value, $comma='', $options='')
 {
 	my $value = shift;
 	my $comma = shift;
+	my $options = shift;
 
 	if($comma)
 	{
@@ -1317,6 +1319,15 @@ sub _format#($value, $comma='')
 		my @temp = split('\.', sprintf('%.*lf', int(substr($comma, 1) || 0), $value || 0));
 		1 while($temp[0] =~ s/(\d)(\d\d\d)(?!\d)/$1,$2/g);
 		$value = join('.', @temp);
+	}
+
+	if($options)
+	{
+		if(index($options, 'b') >= 0)
+		{
+			# Convert linebreaks to "<br />"
+			$value =~ s/(\r?\n)/<br \/>$1/g;
+		}
 	}
 
 	return $value;
@@ -1599,7 +1610,7 @@ sub set_replace_tag#($begin, $end, $escape=true)
 # @param	mixed	$value         Array or string
 # @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 ##
-sub set_var#($name, $value, $convert_html=false)
+sub set_var#($name, $value, $convert_html=true)
 {
 	my $this = shift;
 	my $name = shift;
@@ -1608,7 +1619,7 @@ sub set_var#($name, $value, $convert_html=false)
 
 	if(!ref($value))
 	{
-		$this->_convert_html_entities(\$value) if(defined($convert_html) && $convert_html);
+		$this->_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
 		$this->{replace_vars}{$name} = $value;
 	}
 	elsif(ref($value) eq 'REF')
@@ -1629,7 +1640,7 @@ sub set_var#($name, $value, $convert_html=false)
 # @param	mixed	$value         Array or string
 # @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 ##
-sub append_var#($name, $value, $convert_html=false)
+sub append_var#($name, $value, $convert_html=true)
 {
 	my $this = shift;
 	my $name = shift;
@@ -1640,7 +1651,7 @@ sub append_var#($name, $value, $convert_html=false)
 
 	if(!ref($value))
 	{
-		$this->_convert_html_entities(\$value) if(defined($convert_html) && $convert_html);
+		$this->_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
 		push(@{$this->{replace_vars}{$name}}, $value);
 	}
 	elsif(ref($value) eq 'REF')
@@ -1720,7 +1731,7 @@ sub format#($format, &$replace)
 	my $format = (ref($this)? shift: $this);
 	my $replace = shift;
 
-	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format($2?eval(${$replace}{$1}.$2):${$replace}{$1},$3)/ego;
+	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format($2?eval(${$replace}{$1}.$2):${$replace}{$1},$3,$4)/ego;
 	return $format;
 }
 

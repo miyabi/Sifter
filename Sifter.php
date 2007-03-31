@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.0
+ * @version		1.1.1
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,13 +89,13 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Definitions
-define(SIFTER_VERSION, '1.0100');
+define('SIFTER_VERSION', '1.0100');
 
-define(SIFTER_AVAILABLE_CONTROLS, 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE');
-define(SIFTER_CONTROL_EXPRESSION, '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
-define(SIFTER_DECIMAL_EXPRESSION, '-?(?:\\d*?\\.\\d+|\\d+\\.?)');
-define(SIFTER_REPLACE_EXPRESSION, '(#?[A-Za-z_]\\w*?)(\\s*[\\+\\-\\*\\/%]\\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?');
-define(SIFTER_EMBED_EXPRESSION, '<(?:input|\\/?select)\\b.*?>|<option\\b.*?>.*?(?:<\\/option>|[\\r\\n])|<textarea\\b.*?>.*?<\\/textarea>');
+define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE');
+define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
+define('SIFTER_DECIMAL_EXPRESSION', '-?(?:\d*?\.\d+|\d+\.?)');
+define('SIFTER_REPLACE_EXPRESSION', '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?');
+define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>');
 
 
 //////////////// Global variables
@@ -1083,7 +1083,7 @@ class Sifter
 				"/($elem3)/e", 'Sifter::_escape_replace_tags("$1")', $condition
 			);
 			$condition = preg_replace(
-				"/$elem4/e", "'preg_match(\''.Sifter::_escape_replace_tags(\"\$5\").'\',\$1)'", $condition
+				"/$elem4/e", "'preg_match(\''.Sifter::_escape_replace_tags(\"\$6\").'\',\$1)'", $condition
 			);
 			$condition = preg_replace(
 				"/$elem1/", '$replace[\'$1\']', $condition
@@ -1097,13 +1097,22 @@ class Sifter
 	 * Called by function format()
 	 * 
 	 * @return	string	Formatted value
-	 * @param	string	$value  Value
-	 * @param	string	$comma  If this parameter is set, numeric value will be converted to comma formatted value
+	 * @param	string	$value    Value
+	 * @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
+	 * @param	string	$options  Options
 	 **/
-	function _format($value, $comma='')
+	function _format($value, $comma='', $options='')
 	{
 		if($comma != '')
 			$value = number_format($value, substr($comma, 1));
+		if($options != '')
+		{
+			if(strpos($options, 'b') !== false)
+			{
+				// Convert linebreaks to "<br />"
+				$value = nl2br($value);
+			}
+		}
 
 		return $value;
 	}
@@ -1337,7 +1346,7 @@ class Sifter
 	 * @param	mixed	$value         Array or string
 	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 	 **/
-	function set_var($name, $value, $convert_html=false)
+	function set_var($name, $value, $convert_html=true)
 	{
 		if($convert_html)
 			$this->_convert_html_entities($value);
@@ -1352,7 +1361,7 @@ class Sifter
 	 * @param	mixed	$value         Array or string
 	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 	 **/
-	function append_var($name, $value, $convert_html=false)
+	function append_var($name, $value, $convert_html=true)
 	{
 		if(!is_array($this->replace_vars[$name]))
 			return;
@@ -1414,7 +1423,7 @@ class Sifter
 	function format($format, &$replace)
 	{
 		global $SIFTER_REPLACE_PATTERN;
-		return preg_replace("/$SIFTER_REPLACE_PATTERN/e", 'Sifter::_format($replace[\'$1\']$2,\'$3\')', $format);
+		return preg_replace("/$SIFTER_REPLACE_PATTERN/e", 'Sifter::_format($replace[\'$1\']$2,\'$3\',\'$4\')', $format);
 	}
 }
 
