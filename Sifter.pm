@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.1
+# @version		1.1.2
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -100,7 +100,7 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0100';
+$VERSION = '1.0102';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
@@ -379,7 +379,7 @@ sub _parse#()
 				return undef;
 			}
 		}
-		elsif(($type eq 'NOBREAK' || $type eq 'LITERAL') && !$param)
+		elsif(($type eq 'NOBREAK' || $type eq 'LITERAL') && $param eq '')
 		{
 			# NOBREAK, LITERAL block
 			if(!$this->_append_element($type, ''))
@@ -387,7 +387,7 @@ sub _parse#()
 				return undef;
 			}
 		}
-		elsif($type eq 'INCLUDE' && $param)
+		elsif($type eq 'INCLUDE' && $param ne '')
 		{
 			# INCLUDE
 			if(!$this->_append_template($param))
@@ -462,7 +462,7 @@ sub _append_template#($template_file)
 	my $this = shift;
 	my $template_file = shift;
 
-	$template_file = $this->{template}->_get_dir_path()."/$template_file" if(substr($template_file, 0, 1) ne '/');
+	$template_file = $this->{template}->_get_dir_path().'/'.$template_file if(substr($template_file, 0, 1) ne '/');
 	if($this->{template}->_is_recursive($template_file))
 	{
 		$this->{template}->_raise_error(__LINE__, 0, "'$template_file' is included recursively");
@@ -558,8 +558,8 @@ sub _display#(&$replace)
 			{
 				$temp{$key} = $value if(!defined($temp{$key}));
 			}
-			$temp{"#$this->{param}"."_index"} = $i;
-			$temp{"#$this->{param}"."_count"} = $count;
+			$temp{'#'.$this->{param}.'_index'} = $i;
+			$temp{'#'.$this->{param}.'_count'} = $count;
 
 			return undef if(!$this->_display_content(\%temp));
 
@@ -585,7 +585,7 @@ sub _display#(&$replace)
 	elsif($this->{type} eq 'IF' || ($this->{type} eq 'ELSE' && !$this->{parent}->{prev_eval_result}))
 	{
 		# IF, ELSE block
-		if($this->{param} eq '' || eval("return ($this->{param});"))
+		if($this->{param} eq '' || eval('return ('.$this->{param}.');'))
 		{
 			return undef if(!$this->_display_content($replace));
 			$this->{parent}->{prev_eval_result} = 1;
@@ -949,7 +949,7 @@ sub _parse#()
 
 	my $fp;
 	local *fp;
-	if(!(open(*fp, "<$this->{template_file}")))
+	if(!(open(*fp, '<'.$this->{template_file})))
 	{
 		print("$this->{top}->{package}: Cannot open file '$this->{template_file}'.\n");
 		return undef;
@@ -1275,11 +1275,11 @@ sub _check_condition#($condition)
 	my $elem1 = $SIFTER_REPLACE_PATTERN;
 	my $elem2 = $SIFTER_DECIMAL_EXPRESSION;
 	my $elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
-	my $elem4 = "\\(($elem1|$elem3)\\s*=~\\s*(\\/(?:[^\\/\\\\]|\\\\.)+\\/[imsx]*)\\)";
-	my $op1 = '[\\-~!]';
-	my $op2 = '[+\\-*\\/%]|&|\\||\\^|<<|>>';
+	my $elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
+	my $op1 = '[\-~!]';
+	my $op2 = '[+\-*\/%]|&|\||\^|<<|>>';
 	my $op3 = '==|!=|>=?|<=?';
-	my $op4 = 'and|or|xor|&&|\\|\\|';
+	my $op4 = 'and|or|xor|&&|\|\|';
 	my %ops = ('=='=>'eq', '!='=>'ne', '>'=>'gt', '>='=>'ge', '<'=>'lt', '<='=>'le');
 	my $temp;
 
@@ -1401,7 +1401,7 @@ sub _set_attribute#($tag, $name, $value, $verbose=true)
 
 	my $ret;
 
-	my $attr = $name.($verbose? "=\"$value\"": "");
+	my $attr = $name.($verbose? '="'.$value.'"': '');
 	if(!(($ret = $tag) =~ s/\b$name=(\'|\"|\b)[^\1]*?\1(\s|\/?>)/$attr$2/is))
 	{
 		($ret = $tag) =~ s/<([^\/]+?)(\s*\/?)>/<$1 $attr$2>/s;

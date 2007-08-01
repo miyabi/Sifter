@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.1
+ * @version		1.1.2
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,7 +89,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Definitions
-define('SIFTER_VERSION', '1.0100');
+define('SIFTER_VERSION', '1.0102');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE');
 define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
@@ -102,8 +102,8 @@ define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
 $SIFTER_CONTROL_TAG_END = '-->';
 $SIFTER_CONTROL_PATTERN = '(.*?)('.$SIFTER_CONTROL_TAG_BGN.SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.')(.*)';
-$SIFTER_REPLACE_TAG_BGN = '\\{';
-$SIFTER_REPLACE_TAG_END = '\\}';
+$SIFTER_REPLACE_TAG_BGN = '\{';
+$SIFTER_REPLACE_TAG_END = '\}';
 $SIFTER_REPLACE_PATTERN = $SIFTER_REPLACE_TAG_BGN.SIFTER_REPLACE_EXPRESSION.$SIFTER_REPLACE_TAG_END;
 
 $SIFTER_SELECT_NAME = '';
@@ -239,7 +239,7 @@ class SifterElement
 
 		while($buf != '' || $this->template->_read_line())
 		{
-			if(!preg_match("/$SIFTER_CONTROL_PATTERN/s", $buf, $matches))
+			if(!preg_match('/'.$SIFTER_CONTROL_PATTERN.'/s', $buf, $matches))
 			{
 				// Text
 				$this->_append_text($buf);
@@ -352,13 +352,13 @@ class SifterElement
 					return false;
 				}
 			}
-			else if(($type == 'NOBREAK' || $type == 'LITERAL') && !$param)
+			else if(($type == 'NOBREAK' || $type == 'LITERAL') && $param == '')
 			{
 				// NOBREAK, LITERAL block
 				if(!$this->_append_element($type, ''))
 					return false;
 			}
-			else if($type == 'INCLUDE' && $param)
+			else if($type == 'INCLUDE' && $param != '')
 			{
 				// INCLUDE
 				if(!$this->_append_template($param))
@@ -423,7 +423,7 @@ class SifterElement
 	function _append_template($template_file)
 	{
 		if(substr($template_file, 0, 1) != '/')
-			$template_file = $this->template->_get_dir_path()."/$template_file";
+			$template_file = $this->template->_get_dir_path().'/'.$template_file;
 
 		if($this->template->_is_recursive($template_file))
 		{
@@ -506,8 +506,8 @@ class SifterElement
 					$temp = array('#value'=>$temp);
 
 				$temp += $replace;
-				$temp["#{$this->param}_index"] = $i;
-				$temp["#{$this->param}_count"] = $count;
+				$temp['#'.$this->param.'_index'] = $i;
+				$temp['#'.$this->param.'_count'] = $count;
 
 				if(!$this->_display_content($temp))
 					return false;
@@ -535,7 +535,7 @@ class SifterElement
 		else if($this->type == 'IF' || ($this->type == 'ELSE' && !$this->parent->prev_eval_result))
 		{
 			// IF, ELSE block
-			if($this->param == '' || @eval("return ({$this->param});"))
+			if($this->param == '' || @eval('return ('.$this->param.');'))
 			{
 				if(!$this->_display_content($replace))
 					return false;
@@ -1067,26 +1067,26 @@ class Sifter
 		$elem1 = $SIFTER_REPLACE_PATTERN;
 		$elem2 = SIFTER_DECIMAL_EXPRESSION;
 		$elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
-		$elem4 = "\\(($elem1|$elem3)\\s*=~\\s*(\\/(?:[^\\/\\\\]|\\\\.)+\\/[imsx]*)\\)";
-		$op1 = '[\\-~!]';
-		$op2 = '[+\\-*\\/%]|&|\\||\\^|<<|>>';
+		$elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
+		$op1 = '[\-~!]';
+		$op2 = '[+\-*\/%]|&|\||\^|<<|>>';
 		$op3 = '==|!=|>=?|<=?';
-		$op4 = 'and|or|xor|&&|\\|\\|';
+		$op4 = 'and|or|xor|&&|\|\|';
 
-		if(preg_replace("/$elem1|$elem2|$elem3|$elem4|$op3|$op4|$op1|$op2|[()]|\s/i", '', $condition))
+		if($a = preg_replace('/'.implode('|', array($elem1, $elem2, $elem3, $elem4, $op3, $op4, $op1, $op2)).'|[()]|\s/i', '', $condition))
 		{
 			return false;
 		}
 		else
 		{
 			$condition = preg_replace(
-				"/($elem3)/e", 'Sifter::_escape_replace_tags("$1")', $condition
+				'/('.$elem3.')/e', 'Sifter::_escape_replace_tags("$1")', $condition
 			);
 			$condition = preg_replace(
-				"/$elem4/e", "'preg_match(\''.Sifter::_escape_replace_tags(\"\$6\").'\',\$1)'", $condition
+				'/'.$elem4.'/e', "'preg_match(\''.Sifter::_escape_replace_tags(\"\$6\").'\',\$1)'", $condition
 			);
 			$condition = preg_replace(
-				"/$elem1/", '$replace[\'$1\']', $condition
+				'/'.$elem1.'/', '$replace[\'$1\']', $condition
 			);
 
 			return Sifter::_unescape_replace_tags($condition);
@@ -1128,7 +1128,7 @@ class Sifter
 		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END;
 
 		return preg_replace(
-			"/($SIFTER_REPLACE_TAG_BGN)(\\\\*?".SIFTER_REPLACE_EXPRESSION."$SIFTER_REPLACE_TAG_END)/", 
+			'/('.$SIFTER_REPLACE_TAG_BGN.')(\\\\*?'.SIFTER_REPLACE_EXPRESSION.$SIFTER_REPLACE_TAG_END.')/', 
 			'$1\\\\$2', 
 			preg_replace('/\\\\\'/', '\'', $str)
 		);
@@ -1145,7 +1145,7 @@ class Sifter
 		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END;
 
 		return preg_replace(
-			"/($SIFTER_REPLACE_TAG_BGN)\\\\(.+?$SIFTER_REPLACE_TAG_END)/", '$1$2', $str
+			'/('.$SIFTER_REPLACE_TAG_BGN.')\\\\(.+?'.$SIFTER_REPLACE_TAG_END.')/', '$1$2', $str
 		);
 	}
 
@@ -1158,7 +1158,7 @@ class Sifter
 	 **/
 	function _get_attribute($tag, $name)
 	{
-		if(preg_match("/\b$name=(\'|\"|\b)([^\\1]*?)\\1(?:\s|\/?>)/is", $tag, $matches))
+		if(preg_match('/\b'.$name.'=(\'|"|\b)([^\1]*?)\1(?:\s|\/?>)/is', $tag, $matches))
 			return $matches[2];
 
 		return null;
@@ -1175,12 +1175,12 @@ class Sifter
 	 **/
 	function _set_attribute($tag, $name, $value, $verbose=true)
 	{
-		$pattern = "/\\b$name=(\'|\"|\\b)[^\\1]*?\\1(\\s|\\/?>)/is";
-		$attr = $name.($verbose? "=\"$value\"": "");
+		$pattern = '/\b'.$name.'=(\'|"|\b)[^\1]*?\1(\s|\/?>)/is';
+		$attr = $name.($verbose? '="'.preg_replace('/([$\\\\\\\\])/', '\\\\$1', $value).'"': '');
 		if(preg_match($pattern, $tag))
 			$ret = preg_replace($pattern, $attr.'$2', $tag);
 		else
-			$ret = preg_replace('/<([^\/]+?)(\s*\/?)>/s', "<$1 $attr$2>", $tag, 1);
+			$ret = preg_replace('/<([^\/]+?)(\s*\/?)>/s', '<$1 '.$attr.'$2>', $tag, 1);
 
 		return $ret;
 	}
@@ -1231,7 +1231,7 @@ class Sifter
 				}
 				else
 				{
-					$str = Sifter::_set_attribute($str, 'value', quotemeta($values[$name]));
+					$str = Sifter::_set_attribute($str, 'value', $values[$name]);
 				}
 			}
 		}
@@ -1423,7 +1423,7 @@ class Sifter
 	function format($format, &$replace)
 	{
 		global $SIFTER_REPLACE_PATTERN;
-		return preg_replace("/$SIFTER_REPLACE_PATTERN/e", 'Sifter::_format($replace[\'$1\']$2,\'$3\',\'$4\')', $format);
+		return preg_replace('/'.$SIFTER_REPLACE_PATTERN.'/e', 'Sifter::_format($replace[\'$1\']$2,\'$3\',\'$4\')', $format);
 	}
 }
 
