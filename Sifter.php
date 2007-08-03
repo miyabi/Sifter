@@ -1211,7 +1211,7 @@ class Sifter
 	{
 		global $SIFTER_SELECT_NAME;
 
-		$str = stripslashes($str);
+		$str = str_replace('\\"', '"', $str);
 
 		if(preg_match('/^<(\/?.+?)\b/', $str, $matches))
 			$element = $matches[1];
@@ -1291,7 +1291,7 @@ class Sifter
 		$str = preg_replace(
 			'/('.SIFTER_EMBED_EXPRESSION.')/es', 
 			'Sifter::_embed_values_callback(\'$1\',$values,$verbose)', 
-			preg_replace('/([\'\\\\])/', '\\\\$1', $str)
+			$str
 		);
 	}
 
