@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.2
+# @version		1.1.3
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -93,20 +93,21 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use vars qw(@ISA $VERSION);
 use vars qw(
 	$SIFTER_AVAILABLE_CONTROLS $SIFTER_CONTROL_EXPRESSION $SIFTER_DECIMAL_EXPRESSION
-	$SIFTER_REPLACE_EXPRESSION $SIFTER_REPLACE_EXPRESSION $SIFTER_EMBED_EXPRESSION
+	$SIFTER_REPLACE_EXPRESSION $SIFTER_EMBED_EXPRESSION $SIFTER_CONDITIONAL_EXPRESSION
 	$SIFTER_CONTROL_TAG_BGN $SIFTER_CONTROL_TAG_END $SIFTER_CONTROL_PATTERN
 	$SIFTER_REPLACE_TAG_BGN $SIFTER_REPLACE_TAG_END $SIFTER_REPLACE_PATTERN
 	$SIFTER_SELECT_NAME
 );
 
 @ISA = qw();
-$VERSION = '1.0102';
+$VERSION = '1.0103';
 
-$SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE';
+$SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
 $SIFTER_DECIMAL_EXPRESSION = '-?(?:\d*?\.\d+|\d+\.?)';
 $SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?';
 $SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>';
+$SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)';
 
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
 $SIFTER_CONTROL_TAG_END = '-->';
@@ -362,6 +363,27 @@ sub _parse#()
 				return undef;
 			}
 		}
+		elsif($type eq '?' && $param ne '')
+		{
+			# ?
+			$param =~ s/^\s+|\s+$//g;
+			my(@condition) = ($param =~ /$Sifter::SIFTER_CONDITIONAL_EXPRESSION/);
+			if($#condition != 2 || !defined($condition[0] = Sifter::_check_condition($condition[0])))
+			{
+				$this->{template}->_raise_error(__LINE__);
+				return undef;
+			}
+			$condition[1] =~ s/\\(.)/$1/g;
+			$condition[2] =~ s/\\(.)/$1/g;
+			if(!$this->_append_element('IF', $condition[0], 1, $condition[1]))
+			{
+				return undef;
+			}
+			if(!$this->_append_element('ELSE', '', 1, $condition[2]))
+			{
+				return undef;
+			}
+		}
 		elsif($type eq 'EMBED')
 		{
 			# EMBED block
@@ -428,14 +450,18 @@ sub _append_text#($str)
 # Appends block to this object
 # 
 # @return	bool
-# @param	string	$type    Type of this object
-# @param	string	$param  Paramenter string
+# @param	string	$type     Type of this object
+# @param	string	$param    Paramenter string
+# @param	bool	$noparse  If this parameter is true, skips parsing added element
+# @param	string	$str      Additional string
 ##
-sub _append_element#($type, $param)
+sub _append_element#($type, $param, $noparse=false, $str='')
 {
 	my $this = shift;
 	my $type = shift;
 	my $param = shift;
+	my $noparse = shift;
+	my $str = shift;
 
 	if(
 		$this->{contents}[++$this->{content_index}] = Sifter::Element->new(
@@ -445,7 +471,16 @@ sub _append_element#($type, $param)
 		)
 	)
 	{
-		return $this->{contents}[$this->{content_index}]->_parse();
+		if(!$noparse)
+		{
+			if(!$this->{contents}[$this->{content_index}]->_parse())
+			{
+				return undef;
+			}
+		}
+
+		$this->{contents}[$this->{content_index}]->_append_text($str) if(defined($str));
+		return 1;
 	}
 
 	return undef;

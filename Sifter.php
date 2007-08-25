@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.2
+ * @version		1.1.3
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,13 +89,14 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Definitions
-define('SIFTER_VERSION', '1.0102');
+define('SIFTER_VERSION', '1.0103');
 
-define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE');
+define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
 define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
 define('SIFTER_DECIMAL_EXPRESSION', '-?(?:\d*?\.\d+|\d+\.?)');
 define('SIFTER_REPLACE_EXPRESSION', '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?');
 define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>');
+define('SIFTER_CONDITIONAL_EXPRESSION', '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)');
 
 
 //////////////// Global variables
@@ -337,6 +338,22 @@ class SifterElement
 					return false;
 				}
 			}
+			else if($type == '?' && $param != '')
+			{
+				// ?
+				if(
+					!preg_match('/'.SIFTER_CONDITIONAL_EXPRESSION.'/', trim($param), $matches) ||
+					!($matches[1] = Sifter::_check_condition($matches[1]))
+				)
+				{
+					$this->template->_raise_error(__LINE__);
+					return false;
+				}
+				if(!$this->_append_element('IF', $matches[1], true, stripslashes($matches[2])))
+					return false;
+				if(!$this->_append_element('ELSE', '', true, stripslashes($matches[3])))
+					return false;
+			}
 			else if($type == 'EMBED')
 			{
 				// EMBED block
@@ -386,7 +403,10 @@ class SifterElement
 		if($str != '')
 		{
 			if(!$this->contents || is_object($this->contents[$this->content_index]))
+			{
+				array_push($this->contents, '');
 				$this->content_index++;
+			}
 			$this->contents[$this->content_index] .= $str;
 		}
 	}
@@ -395,10 +415,12 @@ class SifterElement
 	 * Appends block to this object
 	 * 
 	 * @return	bool
-	 * @param	string	$type   Type of this object
-	 * @param	string	$param  Parameter string
+	 * @param	string	$type     Type of this object
+	 * @param	string	$param    Parameter string
+	 * @param	bool	$noparse  If this parameter is true, skips parsing added element
+	 * @param	string	$str      Additional string
 	 **/
-	function _append_element($type, $param)
+	function _append_element($type, $param, $noparse=false, $str='')
 	{
 		if(
 			$this->contents[++$this->content_index] = new SifterElement(
@@ -408,7 +430,14 @@ class SifterElement
 			)
 		)
 		{
-			return $this->contents[$this->content_index]->_parse();
+			if(!$noparse)
+				if(!$this->contents[$this->content_index]->_parse())
+					return false;
+
+			if($str != '')
+				$this->contents[$this->content_index]->_append_text($str);
+
+			return true;
 		}
 
 		return false;
@@ -492,7 +521,9 @@ class SifterElement
 		if($this->type == 'LOOP')
 		{
 			// LOOP block
-			if(!is_array($replace[$this->param]) || count($replace[$this->param]) < 1)
+			if(!(
+				isset($replace[$this->param]) && is_array($replace[$this->param]) && count($replace[$this->param]) > 0
+			))
 			{
 				$this->parent->prev_eval_result = false;
 				return true;
@@ -522,7 +553,7 @@ class SifterElement
 			{
 				$j = $matches[1];
 				$k = $matches[2];
-				$l = ($matches[3]? $matches[3]: (($j<=$k)? 1: -1));
+				$l = ((count($matches) > 3 && $matches[3])? $matches[3]: (($j<=$k)? 1: -1));
 				$temp = $replace;
 				for($i=$j; ($l>0 && $i<=$k) || ($l<0 && $i>=$k); $i+=$l)
 				{
@@ -696,7 +727,7 @@ class SifterTemplate
 	{
 		if(is_null($parent)) return false;
 
-		if(is_null($parent->top) || strcasecmp(get_class($parent), 'Sifter') == 0)
+		if(strcasecmp(get_class($parent), 'Sifter') == 0 || is_null($parent->top))
 		{
 			$this->top =& $parent;
 			$this->parent = null;
@@ -1423,7 +1454,10 @@ class Sifter
 	function format($format, &$replace)
 	{
 		global $SIFTER_REPLACE_PATTERN;
-		return preg_replace('/'.$SIFTER_REPLACE_PATTERN.'/e', 'Sifter::_format($replace[\'$1\']$2,\'$3\',\'$4\')', $format);
+		return preg_replace(
+			'/'.$SIFTER_REPLACE_PATTERN.'/e', 
+			'Sifter::_format((isset($replace[\'$1\'])? $replace[\'$1\']: \'\')$2,\'$3\',\'$4\')', $format
+		);
 	}
 }
 
