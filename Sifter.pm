@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.3
+# @version		1.1.4
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -582,6 +582,8 @@ sub _display#(&$replace)
 			$this->{parent}->{prev_eval_result} = 0;
 			return 1;
 		}
+
+		$this->{parent}->{prev_eval_result} = 1;
 
 		$count = $#{${$replace}{$this->{param}}}+1;
 		$i = 0;

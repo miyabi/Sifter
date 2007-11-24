@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.3
+ * @version		1.1.4
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -528,6 +528,8 @@ class SifterElement
 				$this->parent->prev_eval_result = false;
 				return true;
 			}
+
+			$this->parent->prev_eval_result = true;
 
 			$count = count($replace[$this->param]);
 			$i = 0;
