@@ -1065,7 +1065,7 @@ class Sifter
 			foreach(array_keys($value) as $key)
 				$this->_convert_html_entities($value[$key]);
 		}
-		else
+		else if(is_string($value))
 		{
 			$value = htmlspecialchars($value);
 		}
