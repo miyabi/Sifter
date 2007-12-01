@@ -1583,7 +1583,7 @@ sub _embed_values#(&$str, &$values, $verbose=true)
 
 	$verbose = 1 if(!defined($verbose));
 
-	${$str} =~ s/($SIFTER_EMBED_EXPRESSION)/Sifter::_embed_values_callback($1,$values,$verbose)/egos;
+	${$str} =~ s/($SIFTER_EMBED_EXPRESSION)/Sifter::_embed_values_callback($1,$values,$verbose)/egios;
 }
 
 ##

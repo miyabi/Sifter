@@ -1322,7 +1322,7 @@ class Sifter
 	function _embed_values(&$str, &$values, $verbose=true)
 	{
 		$str = preg_replace(
-			'/('.SIFTER_EMBED_EXPRESSION.')/es', 
+			'/('.SIFTER_EMBED_EXPRESSION.')/eis', 
 			'Sifter::_embed_values_callback(\'$1\',$values,$verbose)', 
 			$str
 		);
