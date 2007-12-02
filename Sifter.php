@@ -322,7 +322,7 @@ class SifterElement
 				}
 				else if($this->type == 'IF' || $this->type == 'ELSE')
 				{
-					if($param != '' && !($param = Sifter::_check_condition($param)))
+					if($param != '' && ($param = Sifter::_check_condition($param)) === false)
 					{
 						$this->template->_raise_error(__LINE__);
 						return false;
@@ -343,7 +343,7 @@ class SifterElement
 				// ?
 				if(
 					!preg_match('/'.SIFTER_CONDITIONAL_EXPRESSION.'/', trim($param), $matches) ||
-					!($matches[1] = Sifter::_check_condition($matches[1]))
+					($matches[1] = Sifter::_check_condition($matches[1])) === false
 				)
 				{
 					$this->template->_raise_error(__LINE__);
