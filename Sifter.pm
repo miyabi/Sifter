@@ -100,7 +100,7 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0103';
+$VERSION = '1.0104';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
@@ -225,8 +225,8 @@ sub new#(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
 	$type = '' if(!defined($type));
 	$param = '' if(!defined($param));
 
-	$this->{top} = (defined($parent->{top})? $parent->{top}: $parent);
-	$this->{template} = (defined($parent->{template})? $parent->{template}: $parent);
+	$this->{top} = (defined($parent->_get_top())? $parent->_get_top(): $parent);
+	$this->{template} = (defined($parent->_get_template())? $parent->_get_template(): $parent);
 
 	$this->{parent} = $parent;
 	$this->{type} = $type;
@@ -239,6 +239,42 @@ sub new#(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
 }
 
 ######## Methods
+##
+# Returns reference to top level object
+# 
+# @return	object	Reference to top level object
+##
+sub _get_top#()
+{
+	my $this = shift;
+
+	return $this->{top};
+}
+
+##
+# Returns reference to template object
+# 
+# @return	object	Reference to template object
+##
+sub _get_template#()
+{
+	my $this = shift;
+
+	return $this->{template};
+}
+
+##
+# Returns reference to parent object
+# 
+# @return	object	Reference to parent object
+##
+sub _get_parent#()
+{
+	my $this = shift;
+
+	return $this->{parent};
+}
+
 ##
 # Reads and parses template file
 # 
@@ -807,14 +843,14 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 
 	return undef if(!defined($parent));
 
-	if(!defined($parent->{top}) || ref($parent) eq 'Sifter')
+	if(ref($parent) eq 'Sifter' || !defined($parent->_get_top()))
 	{
 		$this->{top} = $parent;
 		$this->{parent} = undef;
 	}
 	else
 	{
-		$this->{top} = $parent->{top};
+		$this->{top} = $parent->_get_top();
 		$this->{parent} = $parent;
 	}
 
@@ -826,6 +862,42 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 }
 
 ######## Methods
+##
+# Returns reference to top level object
+# 
+# @return	object	Reference to top level object
+##
+sub _get_top#()
+{
+	my $this = shift;
+
+	return $this->{top};
+}
+
+##
+# Returns reference to template object
+# 
+# @return	object	Reference to template object
+##
+sub _get_template#()
+{
+	my $this = shift;
+
+	return $this->{template};
+}
+
+##
+# Returns reference to parent object
+# 
+# @return	object	Reference to parent object
+##
+sub _get_parent#()
+{
+	my $this = shift;
+
+	return $this->{parent};
+}
+
 ##
 # Specifies path to template file
 # 
@@ -914,7 +986,7 @@ sub _is_recursive#($template_file)
 	my $template_file = shift;
 
 	return 1 if($this->{template_file} eq $template_file);
-	return $this->{parent}->{template}->_is_recursive($template_file) if(defined($this->{parent}));
+	return $this->{parent}->_get_template()->_is_recursive($template_file) if(defined($this->{parent}));
 	return undef;
 }
 
@@ -1244,27 +1316,26 @@ sub _construct_var
 ##
 sub _convert_html_entities#(&$value)
 {
-	my $this = shift;
 	my $value = shift;
 
 	my $key;
 
 	if(ref($value) eq 'REF')
 	{
-		$this->_convert_html_entities(${$value});
+		Sifter::_convert_html_entities(${$value});
 	}
 	elsif(ref($value) eq 'ARRAY')
 	{
 		foreach $key (0..$#{$value})
 		{
-			$this->_convert_html_entities(\${$value}[$key]);
+			Sifter::_convert_html_entities(\${$value}[$key]);
 		}
 	}
 	elsif(ref($value) eq 'HASH')
 	{
 		foreach $key (keys(%{$value}))
 		{
-			$this->_convert_html_entities(\${$value}{$key});
+			Sifter::_convert_html_entities(\${$value}{$key});
 		}
 	}
 	else
@@ -1305,7 +1376,7 @@ sub _parse#($template_file)
 # @return	string	Parsed condition
 # @param	string	$condition  Condition string
 ##
-sub _check_condition#($condition)
+sub Sifter::_check_condition#($condition)
 {
 	my $condition = shift;
 
@@ -1344,7 +1415,7 @@ sub _check_condition#($condition)
 # @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
 # @param	string	$options  Options
 ##
-sub _format#($value, $comma='', $options='')
+sub Sifter::_format_callback#($value, $comma='', $options='')
 {
 	my $value = shift;
 	my $comma = shift;
@@ -1376,7 +1447,7 @@ sub _format#($value, $comma='', $options='')
 # @return	string	String that includes escaped replace tags
 # @param	string	$str    Source string
 ##
-sub _escape_replace_tags#($str)
+sub Sifter::_escape_replace_tags#($str)
 {
 	my $str = shift;
 
@@ -1390,7 +1461,7 @@ sub _escape_replace_tags#($str)
 # @return	string	String that includes unescaped replace tags
 # @param	string	$str    Source string
 ##
-sub _unescape_replace_tags#($str)
+sub Sifter::_unescape_replace_tags#($str)
 {
 	my $str = shift;
 
@@ -1405,7 +1476,7 @@ sub _unescape_replace_tags#($str)
 # @param	string	$tag   Tag
 # @param	string	$name  Name of attribute to extract
 ##
-sub _get_attribute#($tag, $name)
+sub Sifter::_get_attribute#($tag, $name)
 {
 	my $tag = shift;
 	my $name = shift;
@@ -1427,7 +1498,7 @@ sub _get_attribute#($tag, $name)
 # @param	string	$value    Value of attribute to set
 # @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 ##
-sub _set_attribute#($tag, $name, $value, $verbose=true)
+sub Sifter::_set_attribute#($tag, $name, $value, $verbose=true)
 {
 	my $tag = shift;
 	my $name = shift;
@@ -1453,7 +1524,7 @@ sub _set_attribute#($tag, $name, $value, $verbose=true)
 # @return	string	Value of id or name attribute
 # @param	string	$tag  Tag
 ##
-sub _get_element_id#($tag)
+sub Sifter::_get_element_id#($tag)
 {
 
 	my $tag = shift;
@@ -1476,7 +1547,7 @@ sub _get_element_id#($tag)
 # @param	array	$values   Array of values to embed
 # @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 ##
-sub _embed_values_callback#($str, &$values, $verbose)
+sub Sifter::_embed_values_callback#($str, &$values, $verbose)
 {
 	my $str = shift;
 	my $values = shift;
@@ -1575,7 +1646,7 @@ sub _embed_values_callback#($str, &$values, $verbose)
 # @param	array		$values   Array of values to embed
 # @param	bool		$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 ##
-sub _embed_values#(&$str, &$values, $verbose=true)
+sub Sifter::_embed_values#(&$str, &$values, $verbose=true)
 {
 	my $str = shift;
 	my $values = shift;
@@ -1656,7 +1727,7 @@ sub set_var#($name, $value, $convert_html=true)
 
 	if(!ref($value))
 	{
-		$this->_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
+		Sifter::_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
 		$this->{replace_vars}{$name} = $value;
 	}
 	elsif(ref($value) eq 'REF')
@@ -1688,7 +1759,7 @@ sub append_var#($name, $value, $convert_html=true)
 
 	if(!ref($value))
 	{
-		$this->_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
+		Sifter::_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
 		push(@{$this->{replace_vars}{$name}}, $value);
 	}
 	elsif(ref($value) eq 'REF')
@@ -1768,7 +1839,7 @@ sub format#($format, &$replace)
 	my $format = (ref($this)? shift: $this);
 	my $replace = shift;
 
-	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format($2?eval(${$replace}{$1}.$2):${$replace}{$1},$3,$4)/ego;
+	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format_callback($2?eval(${$replace}{$1}.$2):${$replace}{$1},$3,$4)/ego;
 	return $format;
 }
 

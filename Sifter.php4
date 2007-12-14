@@ -3,7 +3,7 @@
 /**
  * Sifter - a simple and functional template engine
  * 
- * $Id$
+ * $Id: Sifter.php4 11 2007-12-02 14:37:58Z miyabi $
  * 
  * @package		Sifter
  * @version		1.1.4
@@ -124,70 +124,70 @@ class SifterElement
 	 * 
 	 * @var	object
 	 **/
-	private $top = null;
+	var $top = null;
 
 	/**
 	 * Holds template object
 	 * 
 	 * @var	object
 	 **/
-	private $template = null;
+	var $template = null;
 
 	/**
 	 * Holds parent object
 	 * 
 	 * @var	object
 	 **/
-	private $parent = null;
+	var $parent = null;
 
 	/**
 	 * Type of this object
 	 * 
 	 * @var	string
 	 **/
-	private $type = '';
+	var $type = '';
 
 	/**
 	 * Parameter string
 	 * 
 	 * @var	string
 	 **/
-	private $param = '';
+	var $param = '';
 
 	/**
 	 * Holds child objects
 	 * 
 	 * @var	array
 	 **/
-	private $contents = array();
+	var $contents = array();
 
 	/**
 	 * Count child objects
 	 * 
 	 * @var	int
 	 **/
-	private $content_index = -1;
+	var $content_index = -1;
 
 	/**
 	 * Embed flag
 	 * 
 	 * @var	int
 	 **/
-	private $embed_flag = 0;
+	var $embed_flag = 0;
 
 	/**
 	 * No-break flag
 	 * 
 	 * @var	int
 	 **/
-	private $nobreak_flag = 0;
+	var $nobreak_flag = 0;
 
 	/**
 	 * Result of previous evaluation of condition
 	 * 
 	 * @var	bool
 	 **/
-	private $prev_eval_result = true;
+	var $prev_eval_result = true;
 
 	//////// Constructor
 	/**
@@ -200,7 +200,7 @@ class SifterElement
 	 * @param	bool	$embed_flag    Embed flag
 	 * @param	bool	$nobreak_flag  No-break flag
 	 **/
-	public function SifterElement(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
+	function SifterElement(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
 	{
 		if(is_null($parent)) return false;
 
@@ -230,7 +230,7 @@ class SifterElement
 	 * 
 	 * @return	object	Reference to top level object
 	 **/
-	public function &_get_top()
+	function &_get_top()
 	{
 		return $this->top;
 	}
@@ -240,7 +240,7 @@ class SifterElement
 	 * 
 	 * @return	object	Reference to template object
 	 **/
-	public function &_get_template()
+	function &_get_template()
 	{
 		return $this->template;
 	}
@@ -250,7 +250,7 @@ class SifterElement
 	 * 
 	 * @return	object	Reference to parent object
 	 **/
-	public function &_get_parent()
+	function &_get_parent()
 	{
 		return $this->parent;
 	}
@@ -260,7 +260,7 @@ class SifterElement
 	 * 
 	 * @return	bool
 	 **/
-	public function _parse()
+	function _parse()
 	{
 		global $SIFTER_CONTROL_PATTERN;
 
@@ -429,7 +429,7 @@ class SifterElement
 	 * @return	bool
 	 * @param	string	$str  String
 	 **/
-	protected function _append_text($str)
+	function _append_text($str)
 	{
 		if($str != '')
 		{
@@ -451,7 +451,7 @@ class SifterElement
 	 * @param	bool	$noparse  If this parameter is true, skips parsing added element
 	 * @param	string	$str      Additional string
 	 **/
-	protected function _append_element($type, $param, $noparse=false, $str='')
+	function _append_element($type, $param, $noparse=false, $str='')
 	{
 		if(
 			$this->contents[++$this->content_index] = new SifterElement(
@@ -480,7 +480,7 @@ class SifterElement
 	 * @return	bool
 	 * @param	string	$template_file  Path to template file
 	 **/
-	protected function _append_template($template_file)
+	function _append_template($template_file)
 	{
 		if(substr($template_file, 0, 1) != '/')
 			$template_file = $this->template->_get_dir_path().'/'.$template_file;
@@ -507,7 +507,7 @@ class SifterElement
 	 * @return	string
 	 * @param	array	$replace  Array of replacement
 	 **/
-	protected function _display_content(&$replace)
+	function _display_content(&$replace)
 	{
 		$literal = ($this->type == 'LITERAL');
 
@@ -547,7 +547,7 @@ class SifterElement
 	 * @return	string
 	 * @param	array	$replace  Array of replacement
 	 **/
-	public function _display(&$replace)
+	function _display(&$replace)
 	{
 		if($this->type == 'LOOP')
 		{
@@ -627,7 +627,7 @@ class SifterElement
 	 * @param	int		$max_length  Number of characters to display text
 	 * @param	string	$tabs        Tab characters
 	 **/
-	public function _display_tree($max_length=20, $tabs='')
+	function _display_tree($max_length=20, $tabs='')
 	{
 		if($this->type)
 			print($tabs."[".$this->type.(($this->param != '')? '('.$this->param.')': '')."]\n");
@@ -660,91 +660,91 @@ class SifterTemplate
 	 * 
 	 * @var	object
 	 **/
-	private $top = null;
+	var $top = null;
 
 	/**
 	 * Holds template object
 	 * 
 	 * @var	object
 	 **/
-	private $template = null;
+	var $template = null;
 
 	/**
 	 * Holds parent object
 	 * 
 	 * @var	object
 	 **/
-	private $parent = null;
+	var $parent = null;
 
 	/**
 	 * Holds child objects
 	 * 
 	 * @var	object
 	 **/
-	private $contents = null;
+	var $contents = null;
 
 	/**
 	 * Path to template file
 	 * 
 	 * @var	string
 	 **/
-	private $template_file = '';
+	var $template_file = '';
 
 	/**
 	 * Path to directory includes template file
 	 * 
 	 * @var	string
 	 **/
-	private $dir_path = '';
+	var $dir_path = '';
 
 	/**
 	 * File pointer of template file
 	 * 
 	 * @var	resource
 	 **/
-	private $fp = null;
+	var $fp = null;
 
 	/**
 	 * Buffer
 	 * 
 	 * @var	resource
 	 **/
-	private $buf = '';
+	var $buf = '';
 
 	/**
 	 * Buffer size
 	 * 
 	 * @var	int
 	 **/
-	private $buf_size = 0;
+	var $buf_size = 0;
 
 	/**
 	 * Line number in currently reading file
 	 * 
 	 * @var	int
 	 **/
-	private $reading_line = 0;
+	var $reading_line = 0;
 
 	/**
 	 * Flag of preserving spaces in the line that includes control tags only
 	 * 
 	 * @var	bool
 	 **/
-	private $preserve_spaces = false;
+	var $preserve_spaces = false;
 
 	/**
 	 * Embed flag
 	 * 
 	 * @var	int
 	 **/
-	private $embed_flag = 0;
+	var $embed_flag = 0;
 
 	/**
 	 * No-break flag
 	 * 
 	 * @var	int
 	 **/
-	private $nobreak_flag = 0;
+	var $nobreak_flag = 0;
 
 	//////// Constructor
 	/**
@@ -756,7 +756,7 @@ class SifterTemplate
 	 * @param	bool	$embed_flag     Embed flag
 	 * @param	bool	$nobreak_flag   No-break flag
 	 **/
-	public function SifterTemplate(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
+	function SifterTemplate(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 	{
 		if(is_null($parent)) return false;
 
@@ -783,7 +783,7 @@ class SifterTemplate
 	 * 
 	 * @return	object	Reference to top level object
 	 **/
-	public function &_get_top()
+	function &_get_top()
 	{
 		return $this->top;
 	}
@@ -793,7 +793,7 @@ class SifterTemplate
 	 * 
 	 * @return	object	Reference to template object
 	 **/
-	public function &_get_template()
+	function &_get_template()
 	{
 		return $this->template;
 	}
@@ -803,7 +803,7 @@ class SifterTemplate
 	 * 
 	 * @return	object	Reference to parent object
 	 **/
-	public function &_get_parent()
+	function &_get_parent()
 	{
 		return $this->parent;
 	}
@@ -813,7 +813,7 @@ class SifterTemplate
 	 * 
 	 * @param	string	$template_file  Path to template file
 	 **/
-	public function _set_template_file($template_file)
+	function _set_template_file($template_file)
 	{
 		$this->template_file = $template_file;
 		$this->_set_dir_path($template_file);
@@ -824,7 +824,7 @@ class SifterTemplate
 	 * 
 	 * @return	string	Path to template file
 	 **/
-	public function _get_template_file()
+	function _get_template_file()
 	{
 		return $this->template_file;
 	}
@@ -834,7 +834,7 @@ class SifterTemplate
 	 * 
 	 * @param	string	$template_file  Path to template file
 	 **/
-	public function _set_dir_path($template_file)
+	function _set_dir_path($template_file)
 	{
 		$this->dir_path = (preg_match('/^(.*)\//', $template_file, $matches)?  $matches[1]: '.');
 	}
@@ -844,7 +844,7 @@ class SifterTemplate
 	 * 
 	 * @return	string	Path to directory includes template file
 	 **/
-	public function _get_dir_path()
+	function _get_dir_path()
 	{
 		return $this->dir_path;
 	}
@@ -854,7 +854,7 @@ class SifterTemplate
 	 * 
 	 * @param	bool	$flag  If this parameter is true, spaces in the line that includes control tags only will be preserved
 	 **/
-	public function _set_preserve_spaces_flag($flag)
+	function _set_preserve_spaces_flag($flag)
 	{
 		$this->preserve_spaces = $flag;
 	}
@@ -864,7 +864,7 @@ class SifterTemplate
 	 * 
 	 * @return	bool
 	 **/
-	public function _get_preserve_spaces_flag()
+	function _get_preserve_spaces_flag()
 	{
 		return $this->preserve_spaces;
 	}
@@ -875,7 +875,7 @@ class SifterTemplate
 	 * @return	bool
 	 * @param	string	$template_file  Path to template file
 	 **/
-	public function _is_recursive($template_file)
+	function _is_recursive($template_file)
 	{
 		if($this->template_file == $template_file)
 		{
@@ -898,7 +898,7 @@ class SifterTemplate
 	 * 
 	 * @return	resource	Reference to buffer
 	 **/
-	public function &_get_buffer()
+	function &_get_buffer()
 	{
 		return $this->buf;
 	}
@@ -907,7 +907,7 @@ class SifterTemplate
 	 * Counts up line number in currently reading file
 	 * 
 	 **/
-	protected function _increment_file_line()
+	function _increment_file_line()
 	{
 		$this->reading_line++;
 	}
@@ -917,7 +917,7 @@ class SifterTemplate
 	 * 
 	 * @return	int	Line number in currently reading file
 	 **/
-	public function _get_file_line()
+	function _get_file_line()
 	{
 		return $this->reading_line;
 	}
@@ -927,7 +927,7 @@ class SifterTemplate
 	 * 
 	 * @return	bool
 	 **/
-	public function _read_line()
+	function _read_line()
 	{
 		if($this->fp && $this->buf = @fgets($this->fp, $this->buf_size))
 		{
@@ -944,7 +944,7 @@ class SifterTemplate
 	 * 
 	 * @return	bool
 	 **/
-	public function _parse()
+	function _parse()
 	{
 		if(is_null($this->contents))
 			$this->contents = new SifterElement($this);
@@ -977,7 +977,7 @@ class SifterTemplate
 	 * @return	string
 	 * @param	array	$replace      Array of replacement
 	 **/
-	public function _display(&$replace)
+	function _display(&$replace)
 	{
 		return $this->contents->_display($replace);
 	}
@@ -989,7 +989,7 @@ class SifterTemplate
 	 * @param	int		$max_length  Number of characters to display text
 	 * @param	string	$tabs        Tab characters
 	 **/
-	public function _display_tree($max_length=20, $tabs='')
+	function _display_tree($max_length=20, $tabs='')
 	{
 		return $this->contents->_display_tree($max_length, $tabs);
 	}
@@ -1001,7 +1001,7 @@ class SifterTemplate
 	 * @param	int		$line         Line number in currently reading file
 	 * @param	string	$error        Error string
 	 **/
-	public function _raise_error($script_line=0, $line=0, $error='')
+	function _raise_error($script_line=0, $line=0, $error='')
 	{
 		$file = $this->_get_template_file();
 		$line = ($line? $line: $this->_get_file_line());
@@ -1028,42 +1028,42 @@ class Sifter
 	 * 
 	 * @var	string
 	 **/
-	private $package = 'Sifter';
+	var $package = 'Sifter';
 
 	/**
 	 * Holds child objects
 	 * 
 	 * @var	object
 	 **/
-	private $contents = null;
+	var $contents = null;
 
 	/**
 	 * Capture result flag
 	 * 
 	 * @var	bool
 	 **/
-	private $capture_result = 0;
+	var $capture_result = 0;
 
 	/**
 	 * Result
 	 * 
 	 * @var	string
 	 **/
-	private $result = '';
+	var $result = '';
 
 	/**
 	 * Buffer size in bytes
 	 * 
 	 * @var	int
 	 **/
-	private $buf_size = 2048;
+	var $buf_size = 2048;
 
 	/**
 	 * Holds replacements
 	 * 
 	 * @var	array
 	 **/
-	private $replace_vars = array();
+	var $replace_vars = array();
 
 	//////// Constructor
 	/**
@@ -1072,7 +1072,7 @@ class Sifter
 	 * @return	bool
 	 * @param	string	$buf_size  Buffer size in bytes
 	 **/
-	public function Sifter($buf_size=null)
+	function Sifter($buf_size=null)
 	{
 		if(!is_null($buf_size))
 			$this->buf_size = $buf_size;
@@ -1086,7 +1086,7 @@ class Sifter
 	 * 
 	 * @return	bool
 	 **/
-	public function _does_capture_result()
+	function _does_capture_result()
 	{
 		return $this->capture_result;
 	}
@@ -1096,7 +1096,7 @@ class Sifter
 	 * 
 	 * @param	$str  String
 	 **/
-	public function _append_result($str)
+	function _append_result($str)
 	{
 		$this->result .= $str;
 	}
@@ -1106,7 +1106,7 @@ class Sifter
 	 * 
 	 * @return	resource	Buffer size in bytes
 	 **/
-	public function _get_buffer_size()
+	function _get_buffer_size()
 	{
 		return $this->buf_size;
 	}
@@ -1117,7 +1117,7 @@ class Sifter
 	 * @return	string	Replacement
 	 * @param	string	$name  Name of variable
 	 **/
-	public function _get_var($name)
+	function _get_var($name)
 	{
 		return $this->replace_vars[$name];
 	}
@@ -1127,7 +1127,7 @@ class Sifter
 	 * 
 	 * @param	mixed	$value  String or array to convert
 	 **/
-	static function _convert_html_entities(&$value)
+	function _convert_html_entities(&$value)
 	{
 		if(is_array($value))
 		{
@@ -1146,7 +1146,7 @@ class Sifter
 	 * @return	bool
 	 * @param	string	$template_file  Path to template file
 	 **/
-	public function _parse($template_file)
+	function _parse($template_file)
 	{
 		if(is_null($this->contents))
 			$this->contents = new SifterTemplate($this, $template_file);
@@ -1162,7 +1162,7 @@ class Sifter
 	 * @return	mixed	
 	 * @param	string	$condition  Condition string
 	 **/
-	static function _check_condition($condition)
+	function _check_condition($condition)
 	{
 		global $SIFTER_REPLACE_PATTERN;
 
@@ -1203,7 +1203,7 @@ class Sifter
 	 * @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
 	 * @param	string	$options  Options
 	 **/
-	static function _format_callback($value, $comma='', $options='')
+	function _format_callback($value, $comma='', $options='')
 	{
 		if($comma != '')
 			$value = number_format($value, substr($comma, 1));
@@ -1225,7 +1225,7 @@ class Sifter
 	 * @return	string	String that includes escaped replace tags
 	 * @param	string	$str  Source string
 	 **/
-	static function _escape_replace_tags($str)
+	function _escape_replace_tags($str)
 	{
 		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END;
 
@@ -1242,7 +1242,7 @@ class Sifter
 	 * @return	string	String that includes unescaped replace tags
 	 * @param	string	$str  Source string
 	 **/
-	static function _unescape_replace_tags($str)
+	function _unescape_replace_tags($str)
 	{
 		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END;
 
@@ -1258,7 +1258,7 @@ class Sifter
 	 * @param	string	$tag   Tag
 	 * @param	string	$name  Name of attribute to extract
 	 **/
-	static function _get_attribute($tag, $name)
+	function _get_attribute($tag, $name)
 	{
 		if(preg_match('/\b'.$name.'=(\'|"|\b)([^\1]*?)\1(?:\s|\/?>)/is', $tag, $matches))
 			return $matches[2];
@@ -1275,7 +1275,7 @@ class Sifter
 	 * @param	string	$value    Value of attribute to set
 	 * @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 	 **/
-	static function _set_attribute($tag, $name, $value, $verbose=true)
+	function _set_attribute($tag, $name, $value, $verbose=true)
 	{
 		$pattern = '/\b'.$name.'=(\'|"|\b)[^\1]*?\1(\s|\/?>)/is';
 		$attr = $name.($verbose? '="'.preg_replace('/([$\\\\\\\\])/', '\\\\$1', $value).'"': '');
@@ -1293,7 +1293,7 @@ class Sifter
 	 * @return	string	Value of id or name attribute
 	 * @param	string	$tag  Tag
 	 **/
-	static function _get_element_id($tag)
+	function _get_element_id($tag)
 	{
 		if(is_null($ret = Sifter::_get_attribute($tag, 'id')))
 			$ret = Sifter::_get_attribute($tag, 'name');
@@ -1309,7 +1309,7 @@ class Sifter
 	 * @param	array	$values   Array of values to embed
 	 * @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 	 **/
-	static function _embed_values_callback($str, &$values, $verbose)
+	function _embed_values_callback($str, &$values, $verbose)
 	{
 		global $SIFTER_SELECT_NAME;
 
@@ -1388,7 +1388,7 @@ class Sifter
 	 * @param	array	$values   Array of values to embed
 	 * @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 	 **/
-	static function _embed_values(&$str, &$values, $verbose=true)
+	function _embed_values(&$str, &$values, $verbose=true)
 	{
 		$str = preg_replace(
 			'/('.SIFTER_EMBED_EXPRESSION.')/eis', 
@@ -1404,7 +1404,7 @@ class Sifter
 	 * @param	string	$end     Control tag characters (end)
 	 * @param	bool	$escape  If this parameter is true, meta characters will be escaped
 	 **/
-	public function set_control_tag($begin, $end, $escape=true)
+	function set_control_tag($begin, $end, $escape=true)
 	{
 		global $SIFTER_CONTROL_TAG_BGN, $SIFTER_CONTROL_TAG_END, $SIFTER_CONTROL_PATTERN;
 
@@ -1426,7 +1426,7 @@ class Sifter
 	 * @param	string	$end     Replace tag characters (end)
 	 * @param	bool	$escape  If this parameter is true, meta characters are escaped
 	 **/
-	public function set_replace_tag($begin, $end, $escape=true)
+	function set_replace_tag($begin, $end, $escape=true)
 	{
 		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END, $SIFTER_REPLACE_PATTERN;
 
@@ -1448,7 +1448,7 @@ class Sifter
 	 * @param	mixed	$value         Array or string
 	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 	 **/
-	public function set_var($name, $value, $convert_html=true)
+	function set_var($name, $value, $convert_html=true)
 	{
 		if($convert_html)
 			Sifter::_convert_html_entities($value);
@@ -1463,7 +1463,7 @@ class Sifter
 	 * @param	mixed	$value         Array or string
 	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
 	 **/
-	public function append_var($name, $value, $convert_html=true)
+	function append_var($name, $value, $convert_html=true)
 	{
 		if(!is_array($this->replace_vars[$name]))
 			return;
@@ -1481,7 +1481,7 @@ class Sifter
 	 * @param	string	$template_file   Path to template file
 	 * @param	bool	$capture_result  If this parameter is true, doesn't display but returns string
 	 **/
-	public function display($template_file, $capture_result=false)
+	function display($template_file, $capture_result=false)
 	{
 		$this->capture_result = $capture_result;
 
@@ -1504,7 +1504,7 @@ class Sifter
 	 * @param	string	$template_file  Path to template file
 	 * @param	int		$max_length     Number of characters to display text
 	 **/
-	public function display_tree($template_file, $max_length=20)
+	function display_tree($template_file, $max_length=20)
 	{
 		if($this->_parse($template_file))
 		{
@@ -1522,7 +1522,7 @@ class Sifter
 	 * @param	string	$format   Format string
 	 * @param	array	$replace  Array of replacement
 	 **/
-	static function format($format, &$replace)
+	function format($format, &$replace)
 	{
 		global $SIFTER_REPLACE_PATTERN;
 		return preg_replace(
