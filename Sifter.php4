@@ -3,7 +3,7 @@
 /**
  * Sifter - a simple and functional template engine
  * 
- * $Id: Sifter.php4 11 2007-12-02 14:37:58Z miyabi $
+ * $Id$
  * 
  * @package		Sifter
  * @version		1.1.4
