@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.4
+# @version		1.1.5
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -100,12 +100,12 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0104';
+$VERSION = '1.0105';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
 $SIFTER_DECIMAL_EXPRESSION = '-?(?:\d*?\.\d+|\d+\.?)';
-$SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?';
+$SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?((?:\:|\/)\w+)?';
 $SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>';
 $SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)';
 
@@ -1435,6 +1435,13 @@ sub Sifter::_format_callback#($value, $comma='', $options='')
 		{
 			# Convert linebreaks to "<br />"
 			$value =~ s/(\r?\n)/<br \/>$1/g;
+		}
+		if(index($options, 'q') >= 0)
+		{
+			# Escape quotes, backslashes and linebreaks
+			$value =~ s/([\'\"\\]|&quot;)/\\$1/g;
+			$value =~ s/\r/\\r/g;
+			$value =~ s/\n/\\n/g;
 		}
 	}
 

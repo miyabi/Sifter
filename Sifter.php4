@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.4
+ * @version		1.1.5
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,12 +89,12 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Definitions
-define('SIFTER_VERSION', '1.0104');
+define('SIFTER_VERSION', '1.0105');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
 define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
 define('SIFTER_DECIMAL_EXPRESSION', '-?(?:\d*?\.\d+|\d+\.?)');
-define('SIFTER_REPLACE_EXPRESSION', '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?(\/\w+)?');
+define('SIFTER_REPLACE_EXPRESSION', '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?((?:\:|\/)\w+)?');
 define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>');
 define('SIFTER_CONDITIONAL_EXPRESSION', '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)');
 
@@ -1213,6 +1213,12 @@ class Sifter
 			{
 				// Convert linebreaks to "<br />"
 				$value = nl2br($value);
+			}
+			if(strpos($options, 'q') !== false)
+			{
+				// Escape quotes, backslashes and linebreaks
+				$value = preg_replace("/([\'\"\\\\]|&quot;)/", "\\\\$1", $value);
+				$value = addcslashes($value, "\r\n");
 			}
 		}
 
