@@ -11,7 +11,7 @@ use strict;
 # @package		Sifter
 # @version		1.1.5
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
-# @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
+# @copyright	Copyright &copy; 2005-2008 Masayuki Iwai all rights reserved.
 # @license		BSD license
 ##
 
@@ -59,7 +59,7 @@ http://www.mybdesign.com/sifter/
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2005-2007 Masayuki Iwai All rights reserved.
+Copyright (c) 2005-2008 Masayuki Iwai All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -90,17 +90,19 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ################ Global variables
-use vars qw(@ISA $VERSION);
+use vars qw(@ISA $VERSION $PACKAGE);
 use vars qw(
 	$SIFTER_AVAILABLE_CONTROLS $SIFTER_CONTROL_EXPRESSION $SIFTER_DECIMAL_EXPRESSION
 	$SIFTER_REPLACE_EXPRESSION $SIFTER_EMBED_EXPRESSION $SIFTER_CONDITIONAL_EXPRESSION
 	$SIFTER_CONTROL_TAG_BGN $SIFTER_CONTROL_TAG_END $SIFTER_CONTROL_PATTERN
 	$SIFTER_REPLACE_TAG_BGN $SIFTER_REPLACE_TAG_END $SIFTER_REPLACE_PATTERN
 	$SIFTER_SELECT_NAME
+	$SIFTER_DEBUG
 );
 
 @ISA = qw();
 $VERSION = '1.0105';
+$PACKAGE = 'Sifter';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
@@ -111,19 +113,20 @@ $SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*
 
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
 $SIFTER_CONTROL_TAG_END = '-->';
-$SIFTER_CONTROL_PATTERN = "^((.*?)(".$SIFTER_CONTROL_TAG_BGN.$SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.")(.*))\$";
+$SIFTER_CONTROL_PATTERN = '^((.*?)('.$SIFTER_CONTROL_TAG_BGN.$SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.')(.*))$';
 $SIFTER_REPLACE_TAG_BGN = '\{';
 $SIFTER_REPLACE_TAG_END = '\}';
 $SIFTER_REPLACE_PATTERN = $SIFTER_REPLACE_TAG_BGN.$SIFTER_REPLACE_EXPRESSION.$SIFTER_REPLACE_TAG_END;
 
 $SIFTER_SELECT_NAME = '';
+$SIFTER_DEBUG = 0;
 
 
 ################ Classes
 ##
 # Template element class
 # 
-# @package	Sifter::Element
+# @package	Sifter
 ##
 package Sifter::Element;
 
@@ -135,8 +138,8 @@ package Sifter::Element;
 # @param	object	$parent        Parent object
 # @param	string	$type          Type of this object
 # @param	string	$param         Parameter string
-# @param	bool	$embed_flag    Embed flag
-# @param	bool	$nobreak_flag  No-break flag
+# @param	int		$embed_flag    Embed flag
+# @param	int		$nobreak_flag  No-break flag
 ##
 sub new#(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
 {
@@ -328,7 +331,7 @@ sub _parse#()
 		}
 
 		my $type = (defined($matches[5])? $matches[5]: '');
-		(my $param = (defined($matches[6])? $matches[6]: '')) =~ s/^\s*(.+?)\s*/$1/;
+		(my $param = (defined($matches[6])? $matches[6]: '')) =~ s/^\s+|\s+$//;
 
 		if($matches[4])
 		{
@@ -402,20 +405,19 @@ sub _parse#()
 		elsif($type eq '?' && $param ne '')
 		{
 			# ?
-			$param =~ s/^\s+|\s+$//g;
-			my(@condition) = ($param =~ /$Sifter::SIFTER_CONDITIONAL_EXPRESSION/);
-			if($#condition != 2 || !defined($condition[0] = Sifter::_check_condition($condition[0])))
+			@matches = ($param =~ /$Sifter::SIFTER_CONDITIONAL_EXPRESSION/);
+			if($#matches < 0 || !defined($matches[0] = Sifter::_check_condition($matches[0])))
 			{
 				$this->{template}->_raise_error(__LINE__);
 				return undef;
 			}
-			$condition[1] =~ s/\\(.)/$1/g;
-			$condition[2] =~ s/\\(.)/$1/g;
-			if(!$this->_append_element('IF', $condition[0], 1, $condition[1]))
+			$matches[1] =~ s/\\(.)/$1/g;
+			$matches[2] =~ s/\\(.)/$1/g;
+			if(!$this->_append_element('IF', $matches[0], 1, $matches[1]))
 			{
 				return undef;
 			}
-			if(!$this->_append_element('ELSE', '', 1, $condition[2]))
+			if(!$this->_append_element('ELSE', '', 1, $matches[2]))
 			{
 				return undef;
 			}
@@ -555,7 +557,7 @@ sub _append_template#($template_file)
 ##
 # Displays content
 # 
-# @return	string
+# @return	bool
 # @param	array	$replace  Array of replacement
 ##
 sub _display_content#(&$replace)
@@ -600,7 +602,7 @@ sub _display_content#(&$replace)
 ##
 # Applys template and displays
 # 
-# @return	string
+# @return	bool
 # @param	array	$replace      Array of replacement
 ##
 sub _display#(&$replace)
@@ -671,7 +673,7 @@ sub _display#(&$replace)
 	elsif($this->{type} ne 'ELSE')
 	{
 		# Other types of block
-			return undef if(!$this->_display_content($replace));
+		return undef if(!$this->_display_content($replace));
 	}
 
 	return 1;
@@ -736,8 +738,8 @@ package Sifter::Template;
 # @return	object
 # @param	object	$parent         Parent object
 # @param	string	$template_file  Path to template file
-# @param	bool	$embed_flag     Embed flag
-# @param	bool	$nobreak_flag   No-break flag
+# @param	int		$embed_flag     Embed flag
+# @param	int		$nobreak_flag   No-break flag
 ##
 sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 {
@@ -1060,7 +1062,7 @@ sub _parse#()
 	local *fp;
 	if(!(open(*fp, '<'.$this->{template_file})))
 	{
-		print("$this->{top}->{package}: Cannot open file '$this->{template_file}'.\n");
+		print("$Sifter::PACKAGE: Cannot open file '$this->{template_file}'.\n");
 		return undef;
 	}
 
@@ -1076,8 +1078,8 @@ sub _parse#()
 
 		if(!defined($this->{parent}))
 		{
-			print("$this->{top}->{package}: Error(s) occurred while parsing file '$this->{template_file}'.\n");
-			print("$this->{top}->{package}: ".$this->_get_file_line()." lines have been read.\n");
+			print("$Sifter::PACKAGE: Error(s) occurred while parsing file '$this->{template_file}'.\n");
+			print("$Sifter::PACKAGE: ".$this->_get_file_line()." lines have been read.\n");
 		}
 		return undef;
 	}
@@ -1091,7 +1093,7 @@ sub _parse#()
 # Applys template and displays
 # 
 # @return	string
-# @param	array	$replace      Array of replacement
+# @param	array	$replace  Array of replacement
 ##
 sub _display#(&$replace)
 {
@@ -1137,7 +1139,7 @@ sub _raise_error#($script_line=0, $line=0, $error='')
 	$file = $this->_get_template_file();
 	$line = ($line? $line: $this->_get_file_line());
 	$error = ($error? $error: 'Syntax error');
-	print($this->{top}->{package}) if(defined($this->{top}));
+	print($Sifter::PACKAGE);
 	print($script_line? "($script_line)": "") if(defined($Sifter::SIFTER_DEBUG));
 	print(": $error in $file on line $line.\n");
 }
@@ -1169,6 +1171,7 @@ sub new#($buf_size=null)
 		# @var	string
 		##
 		package=>'Sifter', 
+
 		##
 		# Holds child objects
 		# 
@@ -1310,44 +1313,6 @@ sub _construct_var
 }
 
 ##
-# Convert HTML entities
-# 
-# @param	mixed	$value  String or array to convert
-##
-sub _convert_html_entities#(&$value)
-{
-	my $value = shift;
-
-	my $key;
-
-	if(ref($value) eq 'REF')
-	{
-		Sifter::_convert_html_entities(${$value});
-	}
-	elsif(ref($value) eq 'ARRAY')
-	{
-		foreach $key (0..$#{$value})
-		{
-			Sifter::_convert_html_entities(\${$value}[$key]);
-		}
-	}
-	elsif(ref($value) eq 'HASH')
-	{
-		foreach $key (keys(%{$value}))
-		{
-			Sifter::_convert_html_entities(\${$value}{$key});
-		}
-	}
-	else
-	{
-		${$value} =~ s/\&/\&amp;/g;
-		${$value} =~ s/\"/\&quot;/g;
-		${$value} =~ s/\</\&lt;/g;
-		${$value} =~ s/\>/\&gt;/g;
-	}
-}
-
-##
 # Reads and parses template file
 # 
 # @return	bool
@@ -1368,300 +1333,6 @@ sub _parse#($template_file)
 	}
 
 	return $this->{contents}->_parse();
-}
-
-##
-# Check condition string
-# 
-# @return	string	Parsed condition
-# @param	string	$condition  Condition string
-##
-sub Sifter::_check_condition#($condition)
-{
-	my $condition = shift;
-
-	my $elem1 = $SIFTER_REPLACE_PATTERN;
-	my $elem2 = $SIFTER_DECIMAL_EXPRESSION;
-	my $elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
-	my $elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
-	my $op1 = '[\-~!]';
-	my $op2 = '[+\-*\/%]|&|\||\^|<<|>>';
-	my $op3 = '==|!=|>=?|<=?';
-	my $op4 = 'and|or|xor|&&|\|\|';
-	my %ops = ('=='=>'eq', '!='=>'ne', '>'=>'gt', '>='=>'ge', '<'=>'lt', '<='=>'le');
-	my $temp;
-
-	($temp = $condition) =~ s/$elem1|$elem2|$elem3|$elem4|$op3|$op4|$op1|$op2|[()]|\s//gio;
-	if($temp)
-	{
-		return undef;
-	}
-	else
-	{
-		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$6}$7/go;
-		$condition =~ s/($elem3)/Sifter::_escape_replace_tags($1)/ego;
-		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($6).")"/ego;
-		$condition =~ s/$elem1/\${\$replace}{'$1'}/go;
-
-		return Sifter::_unescape_replace_tags($condition);
-	}
-}
-
-##
-# Called by function format()
-# 
-# @return	string	Formatted value
-# @param	string	$value    Value
-# @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
-# @param	string	$options  Options
-##
-sub Sifter::_format_callback#($value, $comma='', $options='')
-{
-	my $value = shift;
-	my $comma = shift;
-	my $options = shift;
-
-	if($comma)
-	{
-		$value =~ s/^(($SIFTER_DECIMAL_EXPRESSION)?).*/$1/;
-		my @temp = split('\.', sprintf('%.*lf', int(substr($comma, 1) || 0), $value || 0));
-		1 while($temp[0] =~ s/(\d)(\d\d\d)(?!\d)/$1,$2/g);
-		$value = join('.', @temp);
-	}
-
-	if($options)
-	{
-		if(index($options, 'b') >= 0)
-		{
-			# Convert linebreaks to "<br />"
-			$value =~ s/(\r?\n)/<br \/>$1/g;
-		}
-		if(index($options, 'q') >= 0)
-		{
-			# Escape quotes, backslashes and linebreaks
-			$value =~ s/([\'\"\\]|&quot;)/\\$1/g;
-			$value =~ s/\r/\\r/g;
-			$value =~ s/\n/\\n/g;
-		}
-	}
-
-	return $value;
-}
-
-##
-# Escape replace tags
-# 
-# @return	string	String that includes escaped replace tags
-# @param	string	$str    Source string
-##
-sub Sifter::_escape_replace_tags#($str)
-{
-	my $str = shift;
-
-	$str =~ s/($SIFTER_REPLACE_TAG_BGN)(\\*?$SIFTER_REPLACE_EXPRESSION$SIFTER_REPLACE_TAG_END)/$1\\$2/go;
-	return $str;
-}
-
-##
-# Unescape replace tags
-# 
-# @return	string	String that includes unescaped replace tags
-# @param	string	$str    Source string
-##
-sub Sifter::_unescape_replace_tags#($str)
-{
-	my $str = shift;
-
-	$str =~ s/($SIFTER_REPLACE_TAG_BGN)\\(.+?$SIFTER_REPLACE_TAG_END)/$1$2/go;
-	return $str;
-}
-
-##
-# Extracts attribute from tag
-# 
-# @return	string	Value of attribute
-# @param	string	$tag   Tag
-# @param	string	$name  Name of attribute to extract
-##
-sub Sifter::_get_attribute#($tag, $name)
-{
-	my $tag = shift;
-	my $name = shift;
-
-	if($tag =~ /\b$name=(\'|\"|\b)([^\1]*?)\1(?:\s|\/?>)/is)
-	{
-		return $2;
-	}
-
-	return undef;
-}
-
-##
-# Sets attribute into tag
-# 
-# @return	string	Tag set attribute
-# @param	string	$tag      Tag
-# @param	string	$name     Name of attribute to set
-# @param	string	$value    Value of attribute to set
-# @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
-##
-sub Sifter::_set_attribute#($tag, $name, $value, $verbose=true)
-{
-	my $tag = shift;
-	my $name = shift;
-	my $value = shift;
-	my $verbose = shift;
-
-	$verbose = 1 if(!defined($verbose));
-
-	my $ret;
-
-	my $attr = $name.($verbose? '="'.$value.'"': '');
-	if(!(($ret = $tag) =~ s/\b$name=(\'|\"|\b)[^\1]*?\1(\s|\/?>)/$attr$2/is))
-	{
-		($ret = $tag) =~ s/<([^\/]+?)(\s*\/?)>/<$1 $attr$2>/s;
-	}
-
-	return $ret;
-}
-
-##
-# Extracts id or name attribute from tag
-# 
-# @return	string	Value of id or name attribute
-# @param	string	$tag  Tag
-##
-sub Sifter::_get_element_id#($tag)
-{
-
-	my $tag = shift;
-
-	my $ret;
-
-	if(!defined($ret = Sifter::_get_attribute($tag, 'id')))
-	{
-		$ret = Sifter::_get_attribute($tag, 'name');
-	}
-
-	return $ret;
-}
-
-##
-# Called by function _embed_values()
-# 
-# @return	string	Value embedded string
-# @param	string	$str      Source string
-# @param	array	$values   Array of values to embed
-# @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
-##
-sub Sifter::_embed_values_callback#($str, &$values, $verbose)
-{
-	my $str = shift;
-	my $values = shift;
-	my $verbose = shift;
-
-	my ($name, $value, $type, $flag, $select_name);
-
-	my $element = $1 if($str =~ /^<(\/?.+?)\b/);
-	if($element =~ /^input$/i)
-	{
-		$name = Sifter::_get_element_id($str);
-		if(defined(${$values}{$name}))
-		{
-			$type = Sifter::_get_attribute($str, 'type');
-			if($type =~ /^radio$/i || $type =~ /^checkbox$/i)
-			{
-				if(Sifter::_get_attribute($str, 'value') eq ${$values}{$name})
-				{
-					$str = Sifter::_set_attribute($str, 'checked', 'checked', $verbose);
-				}
-				else
-				{
-					$str =~ s/(<input.*)\s+checked(?:=(\"|\'|\b)checked\2)?(\s*\/?>)/$1$3/is;
-				}
-			}
-			else
-			{
-				$str = Sifter::_set_attribute($str, 'value', ${$values}{$name});
-			}
-		}
-	}
-	elsif($element =~ /^textarea$/i)
-	{
-		$name = Sifter::_get_element_id($str);
-		if(defined(${$values}{$name}))
-		{
-			$str =~ s/(<textarea\b.*?>).*?(<\/textarea>)/$1${$values}{$name}$2/is;
-		}
-	}
-	elsif($element =~ /^select$/i)
-	{
-		if(!$SIFTER_SELECT_NAME)
-		{
-			($SIFTER_SELECT_NAME = Sifter::_get_element_id($str)) =~ s/\[\]//;
-		}
-	}
-	elsif($element =~ /^\/select$/i)
-	{
-		$SIFTER_SELECT_NAME = '';
-	}
-	elsif($element =~ /^option$/i)
-	{
-		if($SIFTER_SELECT_NAME && defined(${$values}{$SIFTER_SELECT_NAME}))
-		{
-			if(!defined($value = Sifter::_get_attribute($str, 'value')))
-			{
-				$value = $1 if($str =~ /<option\b.*?>(.*?)(?:<\/option>|[\r\n])/i);
-			}
-
-			$flag = 0;
-			if(ref(${$values}{$SIFTER_SELECT_NAME}) eq 'ARRAY')
-			{
-				foreach(@{${$values}{$SIFTER_SELECT_NAME}})
-				{
-					if($_ eq $value)
-					{
-						$flag = 1;
-						last;
-					}
-				}
-			}
-			elsif($value eq ${$values}{$SIFTER_SELECT_NAME})
-			{
-				$flag = 1;
-			}
-
-			if($flag)
-			{
-				$str = Sifter::_set_attribute($str, 'selected', 'selected', $verbose);
-			}
-			else
-			{
-				$str =~ s/(<option.*)\s+selected(?:=(\"|\'|\b)selected\2)?(\s*\/?>)/$1$3/is;
-			}
-		}
-	}
-
-	return $str;
-}
-
-##
-# Embed value into element of form
-# 
-# @return	string	Value embedded string
-# @param	resource	$str      Reference to source string
-# @param	array		$values   Array of values to embed
-# @param	bool		$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
-##
-sub Sifter::_embed_values#(&$str, &$values, $verbose=true)
-{
-	my $str = shift;
-	my $values = shift;
-	my $verbose = shift;
-
-	$verbose = 1 if(!defined($verbose));
-
-	${$str} =~ s/($SIFTER_EMBED_EXPRESSION)/Sifter::_embed_values_callback($1,$values,$verbose)/egios;
 }
 
 ##
@@ -1688,7 +1359,7 @@ sub set_control_tag#($begin, $end, $escape=true)
 
 	$SIFTER_CONTROL_TAG_BGN = $begin;
 	$SIFTER_CONTROL_TAG_END = $end  ;
-	$SIFTER_CONTROL_PATTERN = "^(.*?)(".$begin.$SIFTER_CONTROL_EXPRESSION.$end.")(.*)\$";
+	$SIFTER_CONTROL_PATTERN = '^((.*?)('.$begin.$SIFTER_CONTROL_EXPRESSION.$end.')(.*))$';
 }
 
 ##
@@ -1785,7 +1456,7 @@ sub append_var#($name, $value, $convert_html=true)
 # 
 # @return	bool
 # @param	string	$template_file   Path to template file
-# @param	bool	$capture_result  If this parameter is true, doesn't display but returns string
+# @param	bool	$capture_result  If this parameter is true, does not display but returns string
 ##
 sub display#($template_file, $capture_result=false)
 {
@@ -1831,6 +1502,339 @@ sub display_tree#($template_file, $max_length=20)
 	}
 
 	return undef;
+}
+
+######## Static methods
+##
+# Check condition string
+# 
+# @return	string	Parsed condition
+# @param	string	$condition  Condition string
+##
+sub _check_condition#($condition)
+{
+	my $condition = shift;
+
+	my $elem1 = $SIFTER_REPLACE_PATTERN;
+	my $elem2 = $SIFTER_DECIMAL_EXPRESSION;
+	my $elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
+	my $elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
+	my $op1 = '[\-~!]';
+	my $op2 = '[+\-*\/%]|&|\||\^|<<|>>';
+	my $op3 = '==|!=|>=?|<=?';
+	my $op4 = 'and|or|xor|&&|\|\|';
+	my %ops = ('=='=>'eq', '!='=>'ne', '>'=>'gt', '>='=>'ge', '<'=>'lt', '<='=>'le');
+	my $temp;
+
+	($temp = $condition) =~ s/$elem1|$elem2|$elem3|$elem4|$op3|$op4|$op1|$op2|[()]|\s//gio;
+	if($temp)
+	{
+		return undef;
+	}
+	else
+	{
+		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$6}$7/go;
+		$condition =~ s/($elem3)/Sifter::_escape_replace_tags($1)/ego;
+		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($6).")"/ego;
+		$condition =~ s/$elem1/\${\$replace}{'$1'}/go;
+
+		return Sifter::_unescape_replace_tags($condition);
+	}
+}
+
+##
+# Escape replace tags
+# 
+# @return	string	String that includes escaped replace tags
+# @param	string	$str  Source string
+##
+sub _escape_replace_tags#($str)
+{
+	my $str = shift;
+
+	$str =~ s/($SIFTER_REPLACE_TAG_BGN)(\\*?$SIFTER_REPLACE_EXPRESSION$SIFTER_REPLACE_TAG_END)/$1\\$2/go;
+	return $str;
+}
+
+##
+# Unescape replace tags
+# 
+# @return	string	String that includes unescaped replace tags
+# @param	string	$str  Source string
+##
+sub _unescape_replace_tags#($str)
+{
+	my $str = shift;
+
+	$str =~ s/($SIFTER_REPLACE_TAG_BGN)\\(.+?$SIFTER_REPLACE_TAG_END)/$1$2/go;
+	return $str;
+}
+
+##
+# Extracts attribute from tag
+# 
+# @return	string	Value of attribute
+# @param	string	$tag   Tag
+# @param	string	$name  Name of attribute to extract
+##
+sub _get_attribute#($tag, $name)
+{
+	my $tag = shift;
+	my $name = shift;
+
+	if($tag =~ /\b$name=(\'|\"|\b)([^\1]*?)\1(?:\s|\/?>)/is)
+	{
+		return $2;
+	}
+
+	return undef;
+}
+
+##
+# Sets attribute into tag
+# 
+# @return	string	Tag set attribute
+# @param	string	$tag      Tag
+# @param	string	$name     Name of attribute to set
+# @param	string	$value    Value of attribute to set
+# @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
+##
+sub _set_attribute#($tag, $name, $value, $verbose=true)
+{
+	my $tag = shift;
+	my $name = shift;
+	my $value = shift;
+	my $verbose = shift;
+
+	$verbose = 1 if(!defined($verbose));
+
+	my $ret;
+
+	my $attr = $name.($verbose? '="'.$value.'"': '');
+	if(!(($ret = $tag) =~ s/\b$name=(\'|\"|\b)[^\1]*?\1(\s|\/?>)/$attr$2/gis))
+	{
+		($ret = $tag) =~ s/<([^\/]+?)(\s*\/?)>/<$1 $attr$2>/s;
+	}
+
+	return $ret;
+}
+
+##
+# Extracts id or name attribute from tag
+# 
+# @return	string	Value of id or name attribute
+# @param	string	$tag  Tag
+##
+sub _get_element_id#($tag)
+{
+
+	my $tag = shift;
+
+	my $ret;
+
+	if(!defined($ret = Sifter::_get_attribute($tag, 'id')))
+	{
+		$ret = Sifter::_get_attribute($tag, 'name');
+	}
+
+	return $ret;
+}
+
+##
+# Called by function _embed_values()
+# 
+# @return	string	Value embedded string
+# @param	string	$str      Source string
+# @param	array	$values   Array of values to embed
+# @param	bool	$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
+##
+sub _embed_values_callback#($str, &$values, $verbose)
+{
+	my $str = shift;
+	my $values = shift;
+	my $verbose = shift;
+
+	my ($name, $value, $type, $flag, $select_name);
+
+	my $element = $1 if($str =~ /^<(\/?.+?)\b/);
+	if($element =~ /^input$/i)
+	{
+		$name = Sifter::_get_element_id($str);
+		if(defined(${$values}{$name}))
+		{
+			$type = Sifter::_get_attribute($str, 'type');
+			if($type =~ /^radio$/i || $type =~ /^checkbox$/i)
+			{
+				if(Sifter::_get_attribute($str, 'value') eq ${$values}{$name})
+				{
+					$str = Sifter::_set_attribute($str, 'checked', 'checked', $verbose);
+				}
+				else
+				{
+					$str =~ s/(<input.*)\s+checked(?:=(\"|\'|\b)checked\2)?(\s*\/?>)/$1$3/is;
+				}
+			}
+			else
+			{
+				$str = Sifter::_set_attribute($str, 'value', ${$values}{$name});
+			}
+		}
+	}
+	elsif($element =~ /^textarea$/i)
+	{
+		$name = Sifter::_get_element_id($str);
+		if(defined(${$values}{$name}))
+		{
+			$str =~ s/(<textarea\b.*?>).*?(<\/textarea>)/$1${$values}{$name}$2/is;
+		}
+	}
+	elsif($element =~ /^select$/i)
+	{
+		if(!$SIFTER_SELECT_NAME)
+		{
+			($SIFTER_SELECT_NAME = Sifter::_get_element_id($str)) =~ s/\[\]$//;
+		}
+	}
+	elsif($element =~ /^\/select$/i)
+	{
+		$SIFTER_SELECT_NAME = '';
+	}
+	elsif($element =~ /^option$/i)
+	{
+		if($SIFTER_SELECT_NAME && defined(${$values}{$SIFTER_SELECT_NAME}))
+		{
+			if(!defined($value = Sifter::_get_attribute($str, 'value')))
+			{
+				$value = $1 if($str =~ /<option\b.*?>(.*?)(?:<\/option>|[\r\n])/i);
+			}
+
+			$flag = 0;
+			if(ref(${$values}{$SIFTER_SELECT_NAME}) eq 'ARRAY')
+			{
+				foreach(@{${$values}{$SIFTER_SELECT_NAME}})
+				{
+					if($_ eq $value)
+					{
+						$flag = 1;
+						last;
+					}
+				}
+			}
+			elsif($value eq ${$values}{$SIFTER_SELECT_NAME})
+			{
+				$flag = 1;
+			}
+
+			if($flag)
+			{
+				$str = Sifter::_set_attribute($str, 'selected', 'selected', $verbose);
+			}
+			else
+			{
+				$str =~ s/(<option.*)\s+selected(?:=(\"|\'|\b)selected\2)?(\s*\/?>)/$1$3/is;
+			}
+		}
+	}
+
+	return $str;
+}
+
+##
+# Embed value into element of form
+# 
+# @return	string		Value embedded string
+# @param	resource	$str      Reference to source string
+# @param	array		$values   Array of values to embed
+# @param	bool		$verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
+##
+sub _embed_values#(&$str, &$values, $verbose=true)
+{
+	my $str = shift;
+	my $values = shift;
+	my $verbose = shift;
+
+	$verbose = 1 if(!defined($verbose));
+
+	${$str} =~ s/($SIFTER_EMBED_EXPRESSION)/Sifter::_embed_values_callback($1,$values,$verbose)/egios;
+}
+
+##
+# Convert HTML entities
+# 
+# @param	mixed	$value  String or array to convert
+##
+sub _convert_html_entities#(&$value)
+{
+	my $value = shift;
+
+	my $key;
+
+	if(ref($value) eq 'REF')
+	{
+		Sifter::_convert_html_entities(${$value});
+	}
+	elsif(ref($value) eq 'ARRAY')
+	{
+		foreach $key (0..$#{$value})
+		{
+			Sifter::_convert_html_entities(\${$value}[$key]);
+		}
+	}
+	elsif(ref($value) eq 'HASH')
+	{
+		foreach $key (keys(%{$value}))
+		{
+			Sifter::_convert_html_entities(\${$value}{$key});
+		}
+	}
+	else
+	{
+		${$value} =~ s/\&/\&amp;/g;
+		${$value} =~ s/\"/\&quot;/g;
+		${$value} =~ s/\</\&lt;/g;
+		${$value} =~ s/\>/\&gt;/g;
+	}
+}
+
+##
+# Called by function format()
+# 
+# @return	string	Formatted value
+# @param	string	$value    Value
+# @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
+# @param	string	$options  Options
+##
+sub _format_callback#($value, $comma='', $options='')
+{
+	my $value = shift;
+	my $comma = shift;
+	my $options = shift;
+
+	if($comma)
+	{
+		$value =~ s/^(($SIFTER_DECIMAL_EXPRESSION)?).*/$1/;
+		my @temp = split('\.', sprintf('%.*lf', int(substr($comma, 1) || 0), $value || 0));
+		1 while($temp[0] =~ s/(\d)(\d\d\d)(?!\d)/$1,$2/g);
+		$value = join('.', @temp);
+	}
+
+	if($options)
+	{
+		if(index($options, 'b') >= 0)
+		{
+			# Convert linebreaks to "<br />"
+			$value =~ s/(\r?\n)/<br \/>$1/g;
+		}
+		if(index($options, 'q') >= 0)
+		{
+			# Escape quotes, backslashes and linebreaks
+			$value =~ s/([\'\"\\]|&quot;)/\\$1/g;
+			$value =~ s/\r/\\r/g;
+			$value =~ s/\n/\\n/g;
+		}
+	}
+
+	return $value;
 }
 
 ##

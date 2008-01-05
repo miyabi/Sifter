@@ -8,18 +8,18 @@
  * @package		Sifter
  * @version		1.1.5
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
- * @copyright	Copyright &copy; 2005-2007 Masayuki Iwai all rights reserved.
+ * @copyright	Copyright &copy; 2005-2008 Masayuki Iwai all rights reserved.
  * @license		BSD license
  **/
 
 
-/*
+/****************************************************************
 
-=head1 NAME
+NAME
 
 Sifter - a simple and functional template engine
 
-=head1 SYNOPSIS
+SYNOPSIS
 
 Example code:
 
@@ -48,17 +48,17 @@ Output:
   loop = 2
   loop = 3
 
-=head1 DESCRIPTION
+DESCRIPTION
 
 This module is a simple and functional template engine.
 
-=head1 SEE ALSO
+SEE ALSO
 
 http://www.mybdesign.com/sifter/
 
-=head1 COPYRIGHT AND LICENSE
+COPYRIGHT AND LICENSE
 
-Copyright (c) 2005-2007 Masayuki Iwai All rights reserved.
+Copyright (c) 2005-2008 Masayuki Iwai All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -85,11 +85,12 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-*/
+****************************************************************/
 
 
-//////////////// Definitions
+//////////////// Constant variables
 define('SIFTER_VERSION', '1.0105');
+define('SIFTER_PACKAGE', 'Sifter');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
 define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
@@ -102,7 +103,7 @@ define('SIFTER_CONDITIONAL_EXPRESSION', '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))
 //////////////// Global variables
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
 $SIFTER_CONTROL_TAG_END = '-->';
-$SIFTER_CONTROL_PATTERN = '(.*?)('.$SIFTER_CONTROL_TAG_BGN.SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.')(.*)';
+$SIFTER_CONTROL_PATTERN = '^(.*?)('.$SIFTER_CONTROL_TAG_BGN.SIFTER_CONTROL_EXPRESSION.$SIFTER_CONTROL_TAG_END.')(.*)$';
 $SIFTER_REPLACE_TAG_BGN = '\{';
 $SIFTER_REPLACE_TAG_END = '\}';
 $SIFTER_REPLACE_PATTERN = $SIFTER_REPLACE_TAG_BGN.SIFTER_REPLACE_EXPRESSION.$SIFTER_REPLACE_TAG_END;
@@ -187,7 +188,7 @@ class SifterElement
 	 * 
 	 * @var	bool
 	 **/
-	private $prev_eval_result = true;
+	protected $prev_eval_result = true;
 
 	//////// Constructor
 	/**
@@ -197,8 +198,8 @@ class SifterElement
 	 * @param	object	$parent        Parent object
 	 * @param	string	$type          Type of this object
 	 * @param	string	$param         Parameter string
-	 * @param	bool	$embed_flag    Embed flag
-	 * @param	bool	$nobreak_flag  No-break flag
+	 * @param	int		$embed_flag    Embed flag
+	 * @param	int		$nobreak_flag  No-break flag
 	 **/
 	public function SifterElement(&$parent, $type='', $param='', $embed_flag=0, $nobreak_flag=0)
 	{
@@ -373,7 +374,7 @@ class SifterElement
 			{
 				// ?
 				if(
-					!preg_match('/'.SIFTER_CONDITIONAL_EXPRESSION.'/', trim($param), $matches) ||
+					!preg_match('/'.SIFTER_CONDITIONAL_EXPRESSION.'/', $param, $matches) ||
 					($matches[1] = Sifter::_check_condition($matches[1])) === false
 				)
 				{
@@ -457,7 +458,7 @@ class SifterElement
 			$this->contents[++$this->content_index] = new SifterElement(
 				$this, $type, $param, 
 				(($type == 'EMBED'  )? $param: $this->embed_flag  ), 
-				(($type == 'NOBREAK')? true  : $this->nobreak_flag)
+				(($type == 'NOBREAK')? 1     : $this->nobreak_flag)
 			)
 		)
 		{
@@ -504,7 +505,7 @@ class SifterElement
 	/**
 	 * Displays content
 	 * 
-	 * @return	string
+	 * @return	bool
 	 * @param	array	$replace  Array of replacement
 	 **/
 	protected function _display_content(&$replace)
@@ -544,7 +545,7 @@ class SifterElement
 	/**
 	 * Applys template and displays
 	 * 
-	 * @return	string
+	 * @return	bool
 	 * @param	array	$replace  Array of replacement
 	 **/
 	public function _display(&$replace)
@@ -753,8 +754,8 @@ class SifterTemplate
 	 * @return	bool
 	 * @param	object	$parent         Parent object
 	 * @param	string	$template_file  Path to template file
-	 * @param	bool	$embed_flag     Embed flag
-	 * @param	bool	$nobreak_flag   No-break flag
+	 * @param	int		$embed_flag     Embed flag
+	 * @param	int		$nobreak_flag   No-break flag
 	 **/
 	public function SifterTemplate(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 	{
@@ -951,7 +952,7 @@ class SifterTemplate
 
 		if(!($this->fp = @fopen($this->template_file, 'r')))
 		{
-			print("{$this->top->package}: Cannot open file '{$this->template_file}'.\n");
+			print(SIFTER_PACKAGE.": Cannot open file '{$this->template_file}'.\n");
 			return false;
 		}
 
@@ -961,8 +962,8 @@ class SifterTemplate
 
 			if(is_null($this->parent))
 			{
-				print("{$this->top->package}: Error(s) occurred while parsing file '{$this->template_file}'.\n");
-				print("{$this->top->package}: ".$this->_get_file_line()." lines have been read.\n");
+				print(SIFTER_PACKAGE.": Error(s) occurred while parsing file '{$this->template_file}'.\n");
+				print(SIFTER_PACKAGE.": ".$this->_get_file_line()." lines have been read.\n");
 			}
 			return false;
 		}
@@ -975,7 +976,7 @@ class SifterTemplate
 	 * Applys template and displays
 	 * 
 	 * @return	string
-	 * @param	array	$replace      Array of replacement
+	 * @param	array	$replace  Array of replacement
 	 **/
 	public function _display(&$replace)
 	{
@@ -1006,8 +1007,7 @@ class SifterTemplate
 		$file = $this->_get_template_file();
 		$line = ($line? $line: $this->_get_file_line());
 		$error = ($error? $error: 'Syntax error');
-		if(!is_null($this->top))
-			print($this->top->package);
+		print(SIFTER_PACKAGE);
 		if(defined('SIFTER_DEBUG'))
 			print($script_line? "($script_line)": "");
 		print(": $error in $file on line $line.\n");
@@ -1023,13 +1023,6 @@ class SifterTemplate
 class Sifter
 {
 	//////// Members
-	/**
-	 * Package name
-	 * 
-	 * @var	string
-	 **/
-	private $package = 'Sifter';
-
 	/**
 	 * Holds child objects
 	 * 
@@ -1123,24 +1116,6 @@ class Sifter
 	}
 
 	/**
-	 * Convert HTML entities
-	 * 
-	 * @param	mixed	$value  String or array to convert
-	 **/
-	static function _convert_html_entities(&$value)
-	{
-		if(is_array($value))
-		{
-			foreach(array_keys($value) as $key)
-				Sifter::_convert_html_entities($value[$key]);
-		}
-		else if(is_string($value))
-		{
-			$value = htmlspecialchars($value);
-		}
-	}
-
-	/**
 	 * Reads and parses template file
 	 * 
 	 * @return	bool
@@ -1156,6 +1131,125 @@ class Sifter
 		return $this->contents->_parse();
 	}
 
+	/**
+	 * Specifies control tag characters
+	 * 
+	 * @param	string	$begin   Control tag characters (begin)
+	 * @param	string	$end     Control tag characters (end)
+	 * @param	bool	$escape  If this parameter is true, meta characters will be escaped
+	 **/
+	public function set_control_tag($begin, $end, $escape=true)
+	{
+		global $SIFTER_CONTROL_TAG_BGN, $SIFTER_CONTROL_TAG_END, $SIFTER_CONTROL_PATTERN;
+
+		if($escape)
+		{
+			$begin = quotemeta($begin);
+			$end   = quotemeta($end  );
+		}
+
+		$SIFTER_CONTROL_TAG_BGN = $begin;
+		$SIFTER_CONTROL_TAG_END = $end  ;
+		$SIFTER_CONTROL_PATTERN = '^(.*?)('.$begin.SIFTER_CONTROL_EXPRESSION.$end.')(.*)$';
+	}
+
+	/**
+	 * Specifies replace tag characters
+	 * 
+	 * @param	string	$begin   Replace tag characters (begin)
+	 * @param	string	$end     Replace tag characters (end)
+	 * @param	bool	$escape  If this parameter is true, meta characters are escaped
+	 **/
+	public function set_replace_tag($begin, $end, $escape=true)
+	{
+		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END, $SIFTER_REPLACE_PATTERN;
+
+		if($escape)
+		{
+			$begin = quotemeta($begin);
+			$end   = quotemeta($end  );
+		}
+
+		$SIFTER_REPLACE_TAG_BGN = $begin;
+		$SIFTER_REPLACE_TAG_END = $end  ;
+		$SIFTER_REPLACE_PATTERN = $begin.SIFTER_REPLACE_EXPRESSION.$end;
+	}
+
+	/**
+	 * Sets up replacements
+	 * 
+	 * @param	string	$name          Name of variable
+	 * @param	mixed	$value         Array or string
+	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
+	 **/
+	public function set_var($name, $value, $convert_html=true)
+	{
+		if($convert_html)
+			Sifter::_convert_html_entities($value);
+
+		$this->replace_vars[$name] = $value;
+	}
+
+	/**
+	 * Append loop variable
+	 * 
+	 * @param	string	$name          Name of variable
+	 * @param	mixed	$value         Array or string
+	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
+	 **/
+	public function append_var($name, $value, $convert_html=true)
+	{
+		if(!is_array($this->replace_vars[$name]))
+			return;
+
+		if($convert_html)
+			Sifter::_convert_html_entities($value);
+
+		array_push($this->replace_vars[$name], $value);
+	}
+
+	/**
+	 * Displays content
+	 * 
+	 * @return	bool
+	 * @param	string	$template_file   Path to template file
+	 * @param	bool	$capture_result  If this parameter is true, does not display but returns string
+	 **/
+	public function display($template_file, $capture_result=false)
+	{
+		$this->capture_result = $capture_result;
+
+		if($this->_parse($template_file))
+		{
+			if(!is_null($this->contents))
+			{
+				if($this->contents->_display($this->replace_vars))
+					return ($this->_does_capture_result()? $this->result: true);
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Displays template structure as a tree
+	 * 
+	 * @return	bool
+	 * @param	string	$template_file  Path to template file
+	 * @param	int		$max_length     Number of characters to display text
+	 **/
+	public function display_tree($template_file, $max_length=20)
+	{
+		if($this->_parse($template_file))
+		{
+			if(!is_null($this->contents))
+				return $this->contents->_display_tree($max_length, '');
+		}
+
+		return false;
+	}
+
+	//////// Static methods
 	/**
 	 * Check condition string
 	 * 
@@ -1175,7 +1269,7 @@ class Sifter
 		$op3 = '==|!=|>=?|<=?';
 		$op4 = 'and|or|xor|&&|\|\|';
 
-		if($a = preg_replace('/'.implode('|', array($elem1, $elem2, $elem3, $elem4, $op3, $op4, $op1, $op2)).'|[()]|\s/i', '', $condition))
+		if(preg_replace('/'.implode('|', array($elem1, $elem2, $elem3, $elem4, $op3, $op4, $op1, $op2)).'|[()]|\s/i', '', $condition))
 		{
 			return false;
 		}
@@ -1193,36 +1287,6 @@ class Sifter
 
 			return Sifter::_unescape_replace_tags($condition);
 		}
-	}
-
-	/**
-	 * Called by function format()
-	 * 
-	 * @return	string	Formatted value
-	 * @param	string	$value    Value
-	 * @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
-	 * @param	string	$options  Options
-	 **/
-	static function _format_callback($value, $comma='', $options='')
-	{
-		if($comma != '')
-			$value = number_format($value, substr($comma, 1));
-		if($options != '')
-		{
-			if(strpos($options, 'b') !== false)
-			{
-				// Convert linebreaks to "<br />"
-				$value = nl2br($value);
-			}
-			if(strpos($options, 'q') !== false)
-			{
-				// Escape quotes, backslashes and linebreaks
-				$value = preg_replace("/([\'\"\\\\]|&quot;)/", "\\\\$1", $value);
-				$value = addcslashes($value, "\r\n");
-			}
-		}
-
-		return $value;
 	}
 
 	/**
@@ -1335,7 +1399,7 @@ class Sifter
 					if(Sifter::_get_attribute($str, 'value') == $values[$name])
 						$str = Sifter::_set_attribute($str, 'checked', 'checked', $verbose);
 					else
-						$str = preg_replace('/(<input.*)\s+checked(?:=(\"|\'|\b)checked\2)?(\s*\/?>)/is', '$1$3', $str);
+						$str = preg_replace('/(<input.*)\s+checked(?:=(\"|\'|\b)checked\2)?(\s*\/?>)/is', '$1$3', $str, 1);
 				}
 				else
 				{
@@ -1355,7 +1419,7 @@ class Sifter
 		else if(strcasecmp($element, 'select') == 0)
 		{
 			if(!$SIFTER_SELECT_NAME)
-				$SIFTER_SELECT_NAME = ereg_replace('\[\]', '', Sifter::_get_element_id($str));
+				$SIFTER_SELECT_NAME = preg_replace('/\[\]$/', '', Sifter::_get_element_id($str), 1);
 		}
 		else if(strcasecmp($element, '/select') == 0)
 		{
@@ -1378,7 +1442,7 @@ class Sifter
 					$str = Sifter::_set_attribute($str, 'selected', 'selected', $verbose);
 				else
 				{
-					$str = preg_replace('/(<option.*)\s+selected(?:=(\"|\'|\b)selected\2)?(\s*\/?>)/is', '$1$3', $str);
+					$str = preg_replace('/(<option.*)\s+selected(?:=(\"|\'|\b)selected\2)?(\s*\/?>)/is', '$1$3', $str, 1);
 				}
 			}
 		}
@@ -1404,121 +1468,51 @@ class Sifter
 	}
 
 	/**
-	 * Specifies control tag characters
+	 * Convert HTML entities
 	 * 
-	 * @param	string	$begin   Control tag characters (begin)
-	 * @param	string	$end     Control tag characters (end)
-	 * @param	bool	$escape  If this parameter is true, meta characters will be escaped
+	 * @param	mixed	$value  String or array to convert
 	 **/
-	public function set_control_tag($begin, $end, $escape=true)
+	static function _convert_html_entities(&$value)
 	{
-		global $SIFTER_CONTROL_TAG_BGN, $SIFTER_CONTROL_TAG_END, $SIFTER_CONTROL_PATTERN;
-
-		if($escape)
+		if(is_array($value))
 		{
-			$begin = quotemeta($begin);
-			$end   = quotemeta($end  );
+			foreach(array_keys($value) as $key)
+				Sifter::_convert_html_entities($value[$key]);
 		}
-
-		$SIFTER_CONTROL_TAG_BGN = $begin;
-		$SIFTER_CONTROL_TAG_END = $end  ;
-		$SIFTER_CONTROL_PATTERN = '^(.*?)('.$begin.SIFTER_CONTROL_EXPRESSION.$end.')(.*)$';
-	}
-
-	/**
-	 * Specifies replace tag characters
-	 * 
-	 * @param	string	$begin   Replace tag characters (begin)
-	 * @param	string	$end     Replace tag characters (end)
-	 * @param	bool	$escape  If this parameter is true, meta characters are escaped
-	 **/
-	public function set_replace_tag($begin, $end, $escape=true)
-	{
-		global $SIFTER_REPLACE_TAG_BGN, $SIFTER_REPLACE_TAG_END, $SIFTER_REPLACE_PATTERN;
-
-		if($escape)
+		else if(is_string($value))
 		{
-			$begin = quotemeta($begin);
-			$end   = quotemeta($end  );
+			$value = htmlspecialchars($value);
 		}
-
-		$SIFTER_REPLACE_TAG_BGN = $begin;
-		$SIFTER_REPLACE_TAG_END = $end  ;
-		$SIFTER_REPLACE_PATTERN = $begin.SIFTER_REPLACE_EXPRESSION.$end;
 	}
 
 	/**
-	 * Sets up replacements
+	 * Called by function format()
 	 * 
-	 * @param	string	$name          Name of variable
-	 * @param	mixed	$value         Array or string
-	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
+	 * @return	string	Formatted value
+	 * @param	string	$value    Value
+	 * @param	string	$comma    If this parameter is set, numeric value will be converted to comma formatted value
+	 * @param	string	$options  Options
 	 **/
-	public function set_var($name, $value, $convert_html=true)
+	static function _format_callback($value, $comma='', $options='')
 	{
-		if($convert_html)
-			Sifter::_convert_html_entities($value);
-
-		$this->replace_vars[$name] = $value;
-	}
-
-	/**
-	 * Append loop variable
-	 * 
-	 * @param	string	$name          Name of variable
-	 * @param	mixed	$value         Array or string
-	 * @param	bool	$convert_html  If this parameter is true, HTML entities are converted
-	 **/
-	public function append_var($name, $value, $convert_html=true)
-	{
-		if(!is_array($this->replace_vars[$name]))
-			return;
-
-		if($convert_html)
-			Sifter::_convert_html_entities($value);
-
-		array_push($this->replace_vars[$name], $value);
-	}
-
-	/**
-	 * Displays content
-	 * 
-	 * @return	bool
-	 * @param	string	$template_file   Path to template file
-	 * @param	bool	$capture_result  If this parameter is true, doesn't display but returns string
-	 **/
-	public function display($template_file, $capture_result=false)
-	{
-		$this->capture_result = $capture_result;
-
-		if($this->_parse($template_file))
+		if($comma != '')
+			$value = number_format($value, substr($comma, 1));
+		if($options != '')
 		{
-			if(!is_null($this->contents))
+			if(strpos($options, 'b') !== false)
 			{
-				if($this->contents->_display($this->replace_vars))
-					return ($this->_does_capture_result()? $this->result: true);
+				// Convert linebreaks to "<br />"
+				$value = nl2br($value);
+			}
+			if(strpos($options, 'q') !== false)
+			{
+				// Escape quotes, backslashes and linebreaks
+				$value = preg_replace("/([\'\"\\\\]|&quot;)/", "\\\\$1", $value);
+				$value = addcslashes($value, "\r\n");
 			}
 		}
 
-		return false;
-	}
-
-	/**
-	 * Displays template structure as a tree
-	 * 
-	 * @return	bool
-	 * @param	string	$template_file  Path to template file
-	 * @param	int		$max_length     Number of characters to display text
-	 **/
-	public function display_tree($template_file, $max_length=20)
-	{
-		if($this->_parse($template_file))
-		{
-			if(!is_null($this->contents))
-				return $this->contents->_display_tree($max_length, '');
-		}
-
-		return false;
+		return $value;
 	}
 
 	/**
