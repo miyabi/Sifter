@@ -800,14 +800,7 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 		# 
 		# @var	resource
 		##
-		buf=>'', 
-
-		##
-		# Buffer size
-		# 
-		# @var	int
-		##
-		buf_size=>0, 
+		buffer=>'', 
 
 		##
 		# Line number in currently reading file
@@ -856,7 +849,6 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 		$this->{parent} = $parent;
 	}
 
-	$this->{buf_size} = $this->{top}->_get_buffer_size();
 	$this->{template_file} = $template_file;
 	$this->{dir_path} = (($template_file =~ /^(.*)\//)? $1: '.');
 
@@ -1001,7 +993,7 @@ sub _get_buffer#()
 {
 	my $this = shift;
 
-	return \$this->{buf};
+	return \$this->{buffer};
 }
 
 ##
@@ -1020,7 +1012,7 @@ sub _increment_file_line#()
 # 
 # @return	int	Line number in currently reading file
 ##
-sub _get_file_line#()
+sub _get_reading_line#()
 {
 	my $this = shift;
 
@@ -1037,7 +1029,7 @@ sub _read_line#()
 	my $this = shift;
 
 	my $fp = $this->{fp};
-	if($fp && ($this->{buf} = <$fp>))
+	if($fp && ($this->{buffer} = <$fp>))
 	{
 		$this->_increment_file_line();
 		$this->_set_preserve_spaces_flag(0);
@@ -1079,7 +1071,7 @@ sub _parse#()
 		if(!defined($this->{parent}))
 		{
 			print("$Sifter::PACKAGE: Error(s) occurred while parsing file '$this->{template_file}'.\n");
-			print("$Sifter::PACKAGE: ".$this->_get_file_line()." lines have been read.\n");
+			print("$Sifter::PACKAGE: ".$this->_get_reading_line()." lines have been read.\n");
 		}
 		return undef;
 	}
@@ -1137,7 +1129,7 @@ sub _raise_error#($script_line=0, $line=0, $error='')
 	my $file;
 
 	$file = $this->_get_template_file();
-	$line = ($line? $line: $this->_get_file_line());
+	$line = ($line? $line: $this->_get_reading_line());
 	$error = ($error? $error: 'Syntax error');
 	print($Sifter::PACKAGE);
 	print($script_line? "($script_line)": "") if(defined($Sifter::SIFTER_DEBUG));
@@ -1154,13 +1146,11 @@ package Sifter;
 
 ######## Constructor
 ##
-# Creates new Sifter::Template object
+# Creates new Sifter object
 # 
 # @return	bool
-# @param	string	$template_file  Path to template file
-# @param	string	$buf_size       Buffer size in bytes
 ##
-sub new#($buf_size=null)
+sub new#()
 {
 	my $class = shift;
 	my $this = {
@@ -1194,23 +1184,12 @@ sub new#($buf_size=null)
 		result=>'', 
 
 		##
-		# Buffer size in bytes
-		# 
-		# @var	int
-		##
-		buf_size=>2048, 
-
-		##
 		# Holds replacements
 		# 
 		# @var	array
 		##
 		replace_vars=>{}, 
 	};
-
-	my $buf_size = shift;
-
-	$this->{buf_size} = $buf_size if(defined($buf_size));
 
 	return bless($this, $class);
 }
@@ -1239,18 +1218,6 @@ sub _append_result#($str)
 	my $str = shift;
 
 	$this->{result} .= $str;
-}
-
-##
-# Returns buffer size in bytes
-# 
-# @return	resource	Buffer size in bytes
-##
-sub _get_buffer_size#()
-{
-	my $this = shift;
-
-	return $this->{buf_size};
 }
 
 ##

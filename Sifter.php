@@ -710,14 +710,14 @@ class SifterTemplate
 	 * 
 	 * @var	resource
 	 **/
-	private $buf = '';
+	private $buffer = '';
 
 	/**
 	 * Buffer size
 	 * 
 	 * @var	int
 	 **/
-	private $buf_size = 0;
+	private $buffer_size = 0;
 
 	/**
 	 * Line number in currently reading file
@@ -772,7 +772,7 @@ class SifterTemplate
 			$this->parent =& $parent;
 		}
 
-		$this->buf_size = $this->top->_get_buffer_size();
+		$this->buffer_size = $this->top->_get_buffer_size();
 		$this->_set_template_file($template_file);
 
 		return true;
@@ -901,7 +901,7 @@ class SifterTemplate
 	 **/
 	public function &_get_buffer()
 	{
-		return $this->buf;
+		return $this->buffer;
 	}
 
 	/**
@@ -918,7 +918,7 @@ class SifterTemplate
 	 * 
 	 * @return	int	Line number in currently reading file
 	 **/
-	public function _get_file_line()
+	public function _get_reading_line()
 	{
 		return $this->reading_line;
 	}
@@ -930,7 +930,7 @@ class SifterTemplate
 	 **/
 	public function _read_line()
 	{
-		if($this->fp && $this->buf = @fgets($this->fp, $this->buf_size))
+		if($this->fp && $this->buffer = @fgets($this->fp, $this->buffer_size))
 		{
 			$this->_increment_file_line();
 			$this->_set_preserve_spaces_flag(false);
@@ -963,7 +963,7 @@ class SifterTemplate
 			if(is_null($this->parent))
 			{
 				print(SIFTER_PACKAGE.": Error(s) occurred while parsing file '{$this->template_file}'.\n");
-				print(SIFTER_PACKAGE.": ".$this->_get_file_line()." lines have been read.\n");
+				print(SIFTER_PACKAGE.": ".$this->_get_reading_line()." lines have been read.\n");
 			}
 			return false;
 		}
@@ -1005,7 +1005,7 @@ class SifterTemplate
 	public function _raise_error($script_line=0, $line=0, $error='')
 	{
 		$file = $this->_get_template_file();
-		$line = ($line? $line: $this->_get_file_line());
+		$line = ($line? $line: $this->_get_reading_line());
 		$error = ($error? $error: 'Syntax error');
 		print(SIFTER_PACKAGE);
 		if(defined('SIFTER_DEBUG'))
@@ -1049,7 +1049,7 @@ class Sifter
 	 * 
 	 * @var	int
 	 **/
-	private $buf_size = 2048;
+	private $buffer_size = 2048;
 
 	/**
 	 * Holds replacements
@@ -1063,12 +1063,12 @@ class Sifter
 	 * Creates new Sifter object
 	 * 
 	 * @return	bool
-	 * @param	string	$buf_size  Buffer size in bytes
+	 * @param	string	$size  Buffer size in bytes
 	 **/
-	public function Sifter($buf_size=null)
+	public function Sifter($size=null)
 	{
-		if(!is_null($buf_size))
-			$this->buf_size = $buf_size;
+		if(!is_null($size))
+			$this->buffer_size = $size;
 
 		return true;
 	}
@@ -1101,7 +1101,7 @@ class Sifter
 	 **/
 	public function _get_buffer_size()
 	{
-		return $this->buf_size;
+		return $this->buffer_size;
 	}
 
 	/**

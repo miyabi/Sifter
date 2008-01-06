@@ -1,0 +1,25 @@
+<!-- Replace -->
+foo = {foo}
+
+<!-- Condition -->
+<!--@IF({condition}=='true')-->
+condition is true
+<!--@ELSE-->
+condition is not true
+<!--@END_IF-->
+
+<!-- Loop -->
+<!--@LOOP(array)-->
+loop = {loop}
+<!--@END_LOOP-->
+
+<!-- Embed into form elements -->
+<!--@EMBED-->
+<input type="text" name="foo" />
+<input type="radio" name="foo" value="bar" />
+<input type="checkbox" name="foo" value="bar" />
+<select name="foo">
+	<option value="bar">bar</option>
+</select>
+<textarea name="foo"></textarea>
+<!--@END_EMBED-->
