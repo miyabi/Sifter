@@ -106,7 +106,6 @@ SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*(
 @@SIFTER_REPLACE_PATTERN = @@SIFTER_REPLACE_TAG_BGN + SIFTER_REPLACE_EXPRESSION + @@SIFTER_REPLACE_TAG_END
 
 @@SIFTER_SELECT_NAME = ''
-@@SIFTER_LINE_BREAK = "\n"
 
 end
 
@@ -559,7 +558,7 @@ class SifterTemplate
 	include SifterModule
 
 	attr_accessor :buffer, :preserve_spaces_flag
-	attr_reader :top, :template, :parent, :template_file, :dir_path
+	attr_reader :top, :template, :parent, :template_file, :dir_path, :reading_line
 
 	######## Constructor
 	##
@@ -734,15 +733,13 @@ class SifterTemplate
 	def _parse()
 		@contents = SifterElement.new(self) if(!@contents)
 
-#		my $fp
-#		local *fp
 		if(!(@fp = File.open(@template_file, 'r')))
 			print("#{SIFTER_PACKAGE}: Cannot open file '#{@template_file}'.\n")
 			return false
 		end
 
 		line_break = $/
-		$/ = @@SIFTER_LINE_BREAK if(@@SIFTER_LINE_BREAK)
+		$/ = SIFTER_LINE_BREAK if(defined?(SIFTER_LINE_BREAK))
 
 		if(!@contents._parse())
 			$/ = line_break
@@ -793,7 +790,7 @@ class SifterTemplate
 		line = ((line != 0)? line: self.reading_line)
 		error = ((error != '')? error: 'Syntax error')
 		print(SIFTER_PACKAGE)
-		print((script_line != 0)? "(#{script_line})": "") if(defined?(Sifter::SIFTER_DEBUG))
+		print((script_line != 0)? "(#{script_line})": "") if(defined?(SIFTER_DEBUG))
 		print(": #{error} in #{file} on line #{line}.\n")
 	end
 
