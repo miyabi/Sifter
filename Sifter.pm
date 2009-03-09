@@ -9,9 +9,9 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.5
+# @version		1.1.6
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
-# @copyright	Copyright &copy; 2005-2008 Masayuki Iwai all rights reserved.
+# @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
 ##
 
@@ -59,7 +59,7 @@ http://www.mybdesign.com/sifter/
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2005-2008 Masayuki Iwai All rights reserved.
+Copyright (c) 2005-2009 Masayuki Iwai All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -101,7 +101,7 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0105';
+$VERSION = '1.0106';
 $PACKAGE = 'Sifter';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
@@ -296,7 +296,7 @@ sub _parse#()
 	$i = 0;
 	while(${$buf} ne '' || $this->{template}->_read_line())
 	{
-		if(!(@matches = (${$buf} =~ /$Sifter::SIFTER_CONTROL_PATTERN/os)))
+		if(!(@matches = (${$buf} =~ /$Sifter::SIFTER_CONTROL_PATTERN/s)))
 		{
 			# Text
 			$this->_append_text(${$buf});
@@ -603,7 +603,7 @@ sub _display_content#(&$replace)
 # Applys template and displays
 # 
 # @return	bool
-# @param	array	$replace      Array of replacement
+# @param	array	$replace  Array of replacement
 ##
 sub _display#(&$replace)
 {
@@ -623,7 +623,6 @@ sub _display#(&$replace)
 
 		$this->{parent}->{prev_eval_result} = 1;
 
-		$count = $#{${$replace}{$this->{param}}}+1;
 		$i = 0;
 		foreach(@{${$replace}{$this->{param}}})
 		{
@@ -634,7 +633,6 @@ sub _display#(&$replace)
 				$temp{$key} = $value if(!defined($temp{$key}));
 			}
 			$temp{'#'.$this->{param}.'_index'} = $i;
-			$temp{'#'.$this->{param}.'_count'} = $count;
 
 			return undef if(!$this->_display_content(\%temp));
 
@@ -711,7 +709,7 @@ sub _display_tree#($max_length=20, $tabs='')
 		{
 			$content->_display_tree($max_length, $tabs."\t");
 		}
-		elsif(ref($content) eq 'Sifter')
+		elsif(ref($content) eq 'Sifter::Template')
 		{
 			$content->_display_tree($max_length, $tabs."\t");
 		}
@@ -833,6 +831,8 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 
 	my $parent = shift;
 	my $template_file = shift;
+	my $embed_flag = shift;
+	my $nobreak_flag = shift;
 
 	$template_file = '' if(!defined($template_file));
 
@@ -851,6 +851,9 @@ sub new#(&$parent, $template_file='', $embed_flag=0, $nobreak_flag=0)
 
 	$this->{template_file} = $template_file;
 	$this->{dir_path} = (($template_file =~ /^(.*)\//)? $1: '.');
+
+	$this->{embed_flag} = (defined($embed_flag)? $embed_flag: 0);
+	$this->{nobreak_flag} = (defined($nobreak_flag)? $nobreak_flag: 0);
 
 	return bless($this, $class);
 }
@@ -1048,7 +1051,7 @@ sub _parse#()
 {
 	my $this = shift;
 
-	$this->{contents} = Sifter::Element->new($this) if(!defined($this->{contents}));
+	$this->{contents} = Sifter::Element->new($this, '', '', $this->{embed_flag}, $this->{nobreak_flag}) if(!defined($this->{contents}));
 
 	my $fp;
 	local *fp;
@@ -1303,6 +1306,34 @@ sub _parse#($template_file)
 }
 
 ##
+# Set loop count value
+# 
+# @param	array	$replace  Array of replacement
+# 
+##
+sub _set_loop_count#(&$replace)
+{
+	my $this = shift;
+	my $replace = shift;
+
+	my $key;
+
+	return if(ref($replace) ne 'HASH');
+
+	foreach $key (keys(%{$replace}))
+	{
+		if(ref(${$replace}{$key}) eq 'ARRAY')
+		{
+			${$replace}{'#'.$key.'_count'} = $#{${$replace}{$key}} + 1;
+			foreach(0..$#{${$replace}{$key}})
+			{
+				$this->_set_loop_count(${${$replace}{$key}}[$_]);
+			}
+		}
+	}
+}
+
+##
 # Specifies control tag characters
 # 
 # @param	string	$begin   Control tag characters (begin)
@@ -1433,10 +1464,14 @@ sub display#($template_file, $capture_result=false)
 
 	$this->{capture_result} = $capture_result;
 
+	$this->{contents} = undef;
+	$this->{result} = '';
+
 	if($this->_parse($template_file))
 	{
 		if(defined($this->{contents}))
 		{
+			$this->_set_loop_count($this->{replace_vars});
 			if($this->{contents}->_display($this->{replace_vars}))
 			{
 				return ($this->_does_capture_result()? $this->{result}: 1);
@@ -1459,6 +1494,9 @@ sub display_tree#($template_file, $max_length=20)
 	my $this = shift;
 	my $template_file = shift;
 	my $max_length = shift;
+
+	$this->{contents} = undef;
+	$this->{result} = '';
 
 	if($this->_parse($template_file))
 	{
@@ -1486,24 +1524,25 @@ sub _check_condition#($condition)
 	my $elem2 = $SIFTER_DECIMAL_EXPRESSION;
 	my $elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
 	my $elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
-	my $op1 = '[\-~!]';
-	my $op2 = '[+\-*\/%]|&|\||\^|<<|>>';
-	my $op3 = '==|!=|>=?|<=?';
+	my $op1 = '[\-~!]|not';
+	my $op2 = '[+\-*\/%]|\.|&|\||\^|<<|>>';
+	my $op3 = '==|!=|<=>|>=?|<=?';
+	my $op3_2 = 'eq|ne|gt|ge|lt|le|cmp';
 	my $op4 = 'and|or|xor|&&|\|\|';
-	my %ops = ('=='=>'eq', '!='=>'ne', '>'=>'gt', '>='=>'ge', '<'=>'lt', '<='=>'le');
+	my %ops = ('=='=>'eq', '!='=>'ne', '<=>'=>'cmp', '>'=>'gt', '>='=>'ge', '<'=>'lt', '<='=>'le');
 	my $temp;
 
-	($temp = $condition) =~ s/$elem1|$elem2|$elem3|$elem4|$op3|$op4|$op1|$op2|[()]|\s//gio;
+	($temp = $condition) =~ s/$elem1|$elem2|$elem3|$elem4|$op3|$op3_2|$op4|$op1|$op2|[()]|\s//gi;
 	if($temp)
 	{
 		return undef;
 	}
 	else
 	{
-		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$6}$7/go;
+		$condition =~ s/((?:$elem1|$elem3)\s*?)($op3)(\s*?(?:$elem1|$elem3))/$1$ops{$6}$7/g;
 		$condition =~ s/($elem3)/Sifter::_escape_replace_tags($1)/ego;
-		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($6).")"/ego;
-		$condition =~ s/$elem1/\${\$replace}{'$1'}/go;
+		$condition =~ s/$elem4/"($1=~".Sifter::_escape_replace_tags($6).")"/eg;
+		$condition =~ s/$elem1/\${\$replace}{'$1'}/g;
 
 		return Sifter::_unescape_replace_tags($condition);
 	}
@@ -1519,7 +1558,7 @@ sub _escape_replace_tags#($str)
 {
 	my $str = shift;
 
-	$str =~ s/($SIFTER_REPLACE_TAG_BGN)(\\*?$SIFTER_REPLACE_EXPRESSION$SIFTER_REPLACE_TAG_END)/$1\\$2/go;
+	$str =~ s/($SIFTER_REPLACE_TAG_BGN)(\\*?$SIFTER_REPLACE_EXPRESSION$SIFTER_REPLACE_TAG_END)/$1\\$2/g;
 	return $str;
 }
 
@@ -1533,7 +1572,7 @@ sub _unescape_replace_tags#($str)
 {
 	my $str = shift;
 
-	$str =~ s/($SIFTER_REPLACE_TAG_BGN)\\(.+?$SIFTER_REPLACE_TAG_END)/$1$2/go;
+	$str =~ s/($SIFTER_REPLACE_TAG_BGN)\\(.+?$SIFTER_REPLACE_TAG_END)/$1$2/g;
 	return $str;
 }
 
@@ -1805,6 +1844,38 @@ sub _format_callback#($value, $comma='', $options='')
 }
 
 ##
+# Called by function format()
+# 
+# @return	string	Formatted value
+# @param	array	$replace    Array of replacement
+# @param	string	$key        Value
+# @param	string	$operation  Arithmetic operation
+# @param	string	$comma      If this parameter is set, numeric value will be converted to comma formatted value
+# @param	string	$options    Options
+##
+sub _format
+{
+	my $replace = shift;
+	my $key = shift;
+	my $operation = shift;
+	my $comma = shift;
+	my $options = shift;
+
+	return '' if(ref($replace) ne 'HASH');
+
+	my $value = (defined(${$replace}{$key})? ${$replace}{$key}: '');
+
+	if($operation)
+	{
+		$value =~ s/^(($SIFTER_DECIMAL_EXPRESSION)?).*/$1/;
+		$value = 0 if($value eq '');
+		$value = eval($value.$operation);
+	}
+
+	return Sifter::_format_callback($value, $comma, $options);
+}
+
+##
 # Format string
 # 
 # @return	string	Formatted string
@@ -1817,7 +1888,7 @@ sub format#($format, &$replace)
 	my $format = (ref($this)? shift: $this);
 	my $replace = shift;
 
-	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format_callback($2?eval(${$replace}{$1}.$2):${$replace}{$1},$3,$4)/ego;
+	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format($replace, $1, $2, $3, $4)/eg;
 	return $format;
 }
 

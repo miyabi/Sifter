@@ -4,9 +4,9 @@
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.5
+# @version		1.1.6
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
-# @copyright	Copyright &copy; 2005-2008 Masayuki Iwai all rights reserved.
+# @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
 ##
 
@@ -54,7 +54,7 @@ http://www.mybdesign.com/sifter/
 
 = COPYRIGHT AND LICENSE
 
-Copyright (c) 2005-2008 Masayuki Iwai All rights reserved.
+Copyright (c) 2005-2009 Masayuki Iwai All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -86,7 +86,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 module SifterModule
 
 ################ Constant variables
-SIFTER_VERSION = '1.0105'
+SIFTER_VERSION = '1.0106'
 SIFTER_PACKAGE = 'Sifter'
 
 SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?'
@@ -239,7 +239,7 @@ class SifterElement
 
 		i = 0
 		while(@template.buffer != '' || @template._read_line())
-			matches = Array(/#{@@SIFTER_CONTROL_PATTERN}/mo.match(@template.buffer))
+			matches = Array(/#{@@SIFTER_CONTROL_PATTERN}/m.match(@template.buffer))
 			if(matches.length <= 0)
 				# Text
 				self._append_text(@template.buffer)
@@ -372,7 +372,7 @@ class SifterElement
 				@content_index += 1
 				@contents[@content_index] = ''
 			end
-			@contents[@content_index] += str
+			@contents[@content_index] += str.to_s
 		end
 	end
 
@@ -465,7 +465,7 @@ class SifterElement
 	# Applys template and displays
 	# 
 	# @return	bool
-	# @param	array	replace      Array of replacement
+	# @param	array	replace  Array of replacement
 	##
 	def _display(replace)
 		if(@type == 'LOOP')
@@ -477,14 +477,12 @@ class SifterElement
 
 			@parent.prev_eval_result = true
 
-			count = replace[@param].length
 			i = 0
 			for temp in replace[@param]
 				temp = {'#value'=>temp} if(!temp.is_a?(Hash))
 
 				temp = temp.merge(replace)
 				temp['#' + @param + '_index'] = i
-				temp['#' + @param + '_count'] = count
 
 				return false if(!self._display_content(temp))
 
@@ -528,7 +526,7 @@ class SifterElement
 	##
 	def _display_tree(max_length=20, tabs='')
 		if(@type != '')
-			print(tabs + "[" + @type + ((@param != '')? '(' + @param + ')': '') + "]\n")
+			print(tabs + "[" + @type + ((@param != '')? '(' + @param.to_s + ')': '') + "]\n")
 		else
 			print(tabs + "[TEMPLATE:" + @template.template_file + "]\n")
 		end
@@ -668,6 +666,9 @@ class SifterTemplate
 
 		@template_file = template_file
 		@dir_path = (/^(.*)\//.match(template_file)? Regexp.last_match[1]: '.')
+
+		@embed_flag   = embed_flag
+		@nobreak_flag = nobreak_flag
 	end
 
 	######## Methods
@@ -731,7 +732,7 @@ class SifterTemplate
 	# @return	bool
 	##
 	def _parse()
-		@contents = SifterElement.new(self) if(!@contents)
+		@contents = SifterElement.new(self, '', '', @embed_flag, @nobreak_flag) if(!@contents)
 
 		if(!(@fp = File.open(@template_file, 'r')))
 			print("#{SIFTER_PACKAGE}: Cannot open file '#{@template_file}'.\n")
@@ -889,6 +890,25 @@ class Sifter
 	end
 
 	##
+	# Set loop count value
+	# 
+	# @param	array	replace  Array of replacement
+	# 
+	##
+	def _set_loop_count(replace)
+		return if(!replace.is_a?(Hash))
+
+		replace.each {|key,|
+			if(replace[key].is_a?(Array))
+				replace["\##{key}_count"] = replace[key].length
+				for i in 0..replace[key].length
+					self._set_loop_count(replace[key][i])
+				end
+			end
+		}
+	end
+
+	##
 	# Specifies control tag characters
 	# 
 	# @param	string	begin   Control tag characters (begin)
@@ -897,8 +917,8 @@ class Sifter
 	##
 	def set_control_tag(begin_tag, end_tag, escape=true)
 		if(escape)
-			begin_tag = begin_tag.gsub(/([.*+?^\$\\|()\[\]])/, '\\\\1')
-			end_tag   = end_tag  .gsub(/([.*+?^\$\\|()\[\]])/, '\\\\1')
+			begin_tag = begin_tag.gsub(/([.*+?^\$\\|()\[\]])/, '\\\\\\1')
+			end_tag   = end_tag  .gsub(/([.*+?^\$\\|()\[\]])/, '\\\\\\1')
 		end
 
 		@@SIFTER_CONTROL_TAG_BGN = begin_tag
@@ -915,8 +935,8 @@ class Sifter
 	##
 	def set_replace_tag(begin_tag, end_tag, escape=true)
 		if(escape)
-			begin_tag.gsub(/([.*+?^\$\\|()\[\]])/, '\\\\1')
-			end_tag  .gsub(/([.*+?^\$\\|()\[\]])/, '\\\\1')
+			begin_tag = begin_tag.gsub(/([.*+?^\$\\|()\[\]])/, '\\\\\\1')
+			end_tag   = end_tag  .gsub(/([.*+?^\$\\|()\[\]])/, '\\\\\\1')
 		end
 
 		@@SIFTER_REPLACE_TAG_BGN = begin_tag
@@ -960,8 +980,12 @@ class Sifter
 	def display(template_file, capture_result=false)
 		@capture_result = capture_result
 
+		@contents = nil
+		@result = ''
+
 		if(self._parse(template_file))
 			if(@contents)
+				self._set_loop_count(@replace_vars)
 				if(@contents._display(@replace_vars))
 					return ((self.capture_result)? @result: true)
 				end
@@ -979,6 +1003,9 @@ class Sifter
 	# @param	int		max_length     Number of characters to display text
 	##
 	def display_tree(template_file, max_length=20)
+		@contents = nil
+		@result = ''
+
 		if(self._parse(template_file))
 			if(@contents)
 				return @contents._display_tree(max_length, '')
@@ -999,22 +1026,22 @@ class Sifter
 		elem1 = @@SIFTER_REPLACE_PATTERN
 		elem2 = SIFTER_DECIMAL_EXPRESSION
 		elem3 = '\'(?:[^\'\\\\]|\\\\.)*\''
-		elem4 = '\((' + elem1 + '|' + elem3 + ')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)'
-		op1 = '[\-~!]'
+		elem4 = '\((' + elem1 + '|' + elem3 + ')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imx]*)\)'
+		op1 = '[\-~!]|not'
 		op2 = '[+\-*\/%]|&|\||\^|<<|>>'
-		op3 = '==|!=|>=?|<=?'
+		op3 = '===?|!=|<=>|>=?|<=?'
 		op4 = 'and|or|xor|&&|\|\|'
 
-		if(condition.gsub(/#{elem1}|#{elem2}|#{elem3}|#{elem4}|#{op3}|#{op4}|#{op1}|#{op2}|[()]|\s/io, '') != '')
+		if(condition.gsub(/#{elem1}|#{elem2}|#{elem3}|#{elem4}|#{op3}|#{op4}|#{op1}|#{op2}|[()]|\s/i, '') != '')
 			return false
 		else
 			condition = condition.gsub(/(#{elem3})/o) {
 				Sifter._escape_replace_tags(Regexp.last_match[1])
 			}
-			condition = condition.gsub(/#{elem4}/o) {
+			condition = condition.gsub(/#{elem4}/) {
 				Sifter._escape_replace_tags(Regexp.last_match[6]) + '.match(' + Regexp.last_match[1] + ')'
 			}
-			condition = condition.gsub(/#{elem1}/o) {
+			condition = condition.gsub(/#{elem1}/) {
 				"replace['" + Regexp.last_match[1] + "']"
 			}
 
@@ -1029,7 +1056,7 @@ class Sifter
 	# @param	string	str  Source string
 	##
 	def self._escape_replace_tags(str)
-		return str.gsub(/(#{@@SIFTER_REPLACE_TAG_BGN})(\\*?#{SIFTER_REPLACE_EXPRESSION}#{@@SIFTER_REPLACE_TAG_END})/o, '\\1\\\\2')
+		return str.gsub(/(#{@@SIFTER_REPLACE_TAG_BGN})(\\*?#{SIFTER_REPLACE_EXPRESSION}#{@@SIFTER_REPLACE_TAG_END})/, '\\1\\\\\\2')
 	end
 
 	##
@@ -1039,7 +1066,7 @@ class Sifter
 	# @param	string	str  Source string
 	##
 	def self._unescape_replace_tags(str)
-		return str.gsub(/(#{@@SIFTER_REPLACE_TAG_BGN})\\(.+?#{@@SIFTER_REPLACE_TAG_END})/o, '\\1\\2')
+		return str.gsub(/(#{@@SIFTER_REPLACE_TAG_BGN})\\(.+?#{@@SIFTER_REPLACE_TAG_END})/, '\\1\\2')
 	end
 
 	##
@@ -1196,7 +1223,6 @@ class Sifter
 	def self._format_callback(value, comma='', options='')
 		if(comma && comma != '')
 			value = value.gsub(/^((#{SIFTER_DECIMAL_EXPRESSION})?).*/, '\\1')
-
 			temp = sprintf('%.*f', comma[1..-1].to_i, value.to_f).split('.')
 			1 while(temp[0].gsub!(/(\d)(\d\d\d)(?!\d)/, '\\1,\\2'))
 			value = temp.join('.')
@@ -1206,11 +1232,11 @@ class Sifter
 		end
 
 		if(options && options != '')
-			if(options.index('b'))
+			if(!options.index('b').nil?)
 				# Convert linebreaks to "<br />"
 				value = value.gsub(/(\r?\n)/, '<br />\\1')
 			end
-			if(options.index('q'))
+			if(!options.index('q').nil?)
 				# Escape quotes, backslashes and linebreaks
 				value = value.gsub(/([\'\"\\]|&quot;)/) {'\\' + Regexp.last_match[1]}
 				value = value.gsub(/\r/, '\\r')
@@ -1229,7 +1255,7 @@ class Sifter
 	# @param	array	replace  Array of replacement
 	##
 	def self.format(format, replace)
-		return format.gsub(/#{@@SIFTER_REPLACE_PATTERN}/o) {
+		return format.gsub(/#{@@SIFTER_REPLACE_PATTERN}/) {
 			Sifter._format_callback(
 				Regexp.last_match[2]? 
 					eval(replace[Regexp.last_match[1]].to_s + Regexp.last_match[2] + '.to_f').to_s: 

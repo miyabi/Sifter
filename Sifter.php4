@@ -6,9 +6,9 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.5
+ * @version		1.1.6
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
- * @copyright	Copyright &copy; 2005-2008 Masayuki Iwai all rights reserved.
+ * @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
  * @license		BSD license
  **/
 
@@ -58,7 +58,7 @@ http://www.mybdesign.com/sifter/
 
 COPYRIGHT AND LICENSE
 
-Copyright (c) 2005-2008 Masayuki Iwai All rights reserved.
+Copyright (c) 2005-2009 Masayuki Iwai All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -89,7 +89,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Constant variables
-define('SIFTER_VERSION', '1.0105');
+define('SIFTER_VERSION', '1.0106');
 define('SIFTER_PACKAGE', 'Sifter');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
@@ -563,7 +563,6 @@ class SifterElement
 
 			$this->parent->prev_eval_result = true;
 
-			$count = count($replace[$this->param]);
 			$i = 0;
 			foreach($replace[$this->param] as $temp)
 			{
@@ -572,7 +571,6 @@ class SifterElement
 
 				$temp += $replace;
 				$temp['#'.$this->param.'_index'] = $i;
-				$temp['#'.$this->param.'_count'] = $count;
 
 				if(!$this->_display_content($temp))
 					return false;
@@ -775,6 +773,9 @@ class SifterTemplate
 		$this->buffer_size = $this->top->_get_buffer_size();
 		$this->_set_template_file($template_file);
 
+		$this->embed_flag   = $embed_flag;
+		$this->nobreak_flag = $nobreak_flag;
+
 		return true;
 	}
 
@@ -948,7 +949,7 @@ class SifterTemplate
 	function _parse()
 	{
 		if(is_null($this->contents))
-			$this->contents = new SifterElement($this);
+			$this->contents = new SifterElement($this, '', '', $this->embed_flag, $this->nobreak_flag);
 
 		if(!($this->fp = @fopen($this->template_file, 'r')))
 		{
@@ -1063,7 +1064,7 @@ class Sifter
 	 * Creates new Sifter object
 	 * 
 	 * @return	bool
-	 * @param	string	$size  Buffer size in bytes
+	 * @param	int		$size  Buffer size in bytes
 	 **/
 	function Sifter($size=null)
 	{
@@ -1129,6 +1130,28 @@ class Sifter
 			$this->contents->_set_template_file($template_file);
 
 		return $this->contents->_parse();
+	}
+
+	/**
+	 * Set loop count value
+	 * 
+	 * @param	array	$replace  Array of replacement
+	 * 
+	 **/
+	function _set_loop_count(&$replace)
+	{
+		if(!is_array($replace)) return;
+
+		reset($replace);
+		while(list($key) = each($replace))
+		{
+			if(is_array($replace[$key]))
+			{
+				$replace['#'.$key.'_count'] = count($replace[$key]);
+				for($i=0; $i<count($replace[$key]); $i++)
+					$this->_set_loop_count($replace[$key][$i]);
+			}
+		}
 	}
 
 	/**
@@ -1219,10 +1242,14 @@ class Sifter
 	{
 		$this->capture_result = $capture_result;
 
+		$this->contents = null;
+		$this->result = '';
+
 		if($this->_parse($template_file))
 		{
 			if(!is_null($this->contents))
 			{
+				$this->_set_loop_count($this->replace_vars);
 				if($this->contents->_display($this->replace_vars))
 					return ($this->_does_capture_result()? $this->result: true);
 			}
@@ -1240,6 +1267,9 @@ class Sifter
 	 **/
 	function display_tree($template_file, $max_length=20)
 	{
+		$this->contents = null;
+		$this->result = '';
+
 		if($this->_parse($template_file))
 		{
 			if(!is_null($this->contents))
@@ -1265,8 +1295,8 @@ class Sifter
 		$elem3 = '\'(?:[^\'\\\\]|\\\\.)*\'';
 		$elem4 = '\(('.$elem1.'|'.$elem3.')\s*=~\s*(\/(?:[^\/\\\\]|\\\\.)+\/[imsx]*)\)';
 		$op1 = '[\-~!]';
-		$op2 = '[+\-*\/%]|&|\||\^|<<|>>';
-		$op3 = '==|!=|>=?|<=?';
+		$op2 = '[+\-*\/%]|\.|&|\||\^|<<|>>';
+		$op3 = '===?|!==?|<>|>=?|<=?';
 		$op4 = 'and|or|xor|&&|\|\|';
 
 		if(preg_replace('/'.implode('|', array($elem1, $elem2, $elem3, $elem4, $op3, $op4, $op1, $op2)).'|[()]|\s/i', '', $condition))
