@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.6
+ * @version		1.1.7
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,14 +89,15 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Constant variables
-define('SIFTER_VERSION', '1.0106');
+define('SIFTER_VERSION', '1.0107');
 define('SIFTER_PACKAGE', 'Sifter');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
 define('SIFTER_CONTROL_EXPRESSION', '((END_)?('.SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?');
 define('SIFTER_DECIMAL_EXPRESSION', '-?(?:\d*?\.\d+|\d+\.?)');
 define('SIFTER_REPLACE_EXPRESSION', '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?((?:\:|\/)\w+)?');
-define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>');
+define('SIFTER_TAG_EXPRESSION', '(?:[^\"\'>]|\"[^\"]*\"|\'[^\']*\')');
+define('SIFTER_EMBED_EXPRESSION', '<(?:input|\/?select)'.SIFTER_TAG_EXPRESSION.'*>|<option'.SIFTER_TAG_EXPRESSION.'*>.*?(?:<\/option>|[\r\n])|<textarea'.SIFTER_TAG_EXPRESSION.'*>.*?<\/textarea>');
 define('SIFTER_CONDITIONAL_EXPRESSION', '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)');
 
 
@@ -1360,8 +1361,8 @@ class Sifter
 	 **/
 	static function _get_attribute($tag, $name)
 	{
-		if(preg_match('/\b'.$name.'=(\'|"|\b)([^\1]*?)\1(?:\s|\/?>)/is', $tag, $matches))
-			return $matches[2];
+		if(preg_match('/\b'.$name.'=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))/is', $tag, $matches))
+			return ($matches[1] ? $matches[1]: ($matches[2]? $matches[2]: $matches[3]));
 
 		return null;
 	}
@@ -1377,12 +1378,12 @@ class Sifter
 	 **/
 	static function _set_attribute($tag, $name, $value, $verbose=true)
 	{
-		$pattern = '/\b'.$name.'=(\'|"|\b)[^\1]*?\1(\s|\/?>)/is';
+		$pattern = '/\b'.$name.'=(?:\"[^\"]*\"|\'([^\']*)\'|[^>\s]*)/is';
 		$attr = $name.($verbose? '="'.preg_replace('/([$\\\\\\\\])/', '\\\\$1', $value).'"': '');
 		if(preg_match($pattern, $tag))
-			$ret = preg_replace($pattern, $attr.'$2', $tag);
+			$ret = preg_replace($pattern, $attr, $tag);
 		else
-			$ret = preg_replace('/<([^\/]+?)(\s*\/?)>/s', '<$1 '.$attr.'$2>', $tag, 1);
+			$ret = preg_replace('/(<'.SIFTER_TAG_EXPRESSION.'*?)(\s*\/>|>)/s', '$1 '.$attr.'$2', $tag, 1);
 
 		return $ret;
 	}
@@ -1441,10 +1442,7 @@ class Sifter
 		{
 			$name = Sifter::_get_element_id($str);
 			if(isset($values[$name]))
-			{
-				if(preg_match('/(<textarea\b.*?>).*?(<\/textarea>)/is', $str, $matches))
-					$str = $matches[1].$values[$name].$matches[2];
-			}
+				$str = preg_replace('/(<textarea\b.*?>).*?(<\/textarea>)/is', '$1'.$values[$name].'$2', $str, 1);
 		}
 		else if(strcasecmp($element, 'select') == 0)
 		{
@@ -1537,7 +1535,7 @@ class Sifter
 			if(strpos($options, 'q') !== false)
 			{
 				// Escape quotes, backslashes and linebreaks
-				$value = preg_replace("/([\'\"\\\\]|&quot;)/", "\\\\$1", $value);
+				$value = preg_replace("/([\"\'\\\\]|&quot;)/", "\\\\$1", $value);
 				$value = addcslashes($value, "\r\n");
 			}
 		}

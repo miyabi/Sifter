@@ -4,7 +4,7 @@
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.6
+# @version		1.1.7
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -87,14 +87,15 @@ import inspect, re, sys, types
 
 
 ################ Constant variables
-SIFTER_VERSION = '1.0106'
+SIFTER_VERSION = '1.0107'
 SIFTER_PACKAGE = 'Sifter'
 
 SIFTER_AVAILABLE_CONTROLS = r'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?'
 SIFTER_CONTROL_EXPRESSION = r'((END_)?(' + SIFTER_AVAILABLE_CONTROLS + r'))(?:\((.*?)\))?'
 SIFTER_DECIMAL_EXPRESSION = r'-?(?:\d*?\.\d+|\d+\.?)'
 SIFTER_REPLACE_EXPRESSION = r'(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*' + SIFTER_DECIMAL_EXPRESSION + r')?(,\d*)?((?:\:|\/)\w+)?'
-SIFTER_EMBED_EXPRESSION = r'<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>'
+SIFTER_TAG_EXPRESSION = r'(?:[^\"\'>]|\"[^\"]*\"|\'[^\']*\')'
+SIFTER_EMBED_EXPRESSION = r'<(?:input|\/?select)' + SIFTER_TAG_EXPRESSION + r'*>|<option' + SIFTER_TAG_EXPRESSION + r'*>.*?(?:<\/option>|[\r\n])|<textarea' + SIFTER_TAG_EXPRESSION + r'*>.*?<\/textarea>'
 SIFTER_CONDITIONAL_EXPRESSION = r'((?:[^\'\?]+|(?:\'(?:\\.|[^\'])*?\'))+)\?\s*((?:\\.|[^:])*)\s*:\s*(.*)'
 
 
@@ -1146,9 +1147,9 @@ class Sifter:
 		@param	string	tag   Tag
 		@param	string	name  Name of attribute to extract
 		"""
-		matches = re.compile(r'\b' + name + r'=(\'|\"|\b)([^\1]*?)\1(?:\s|\/?>)', re.I|re.S).search(tag)
+		matches = re.compile(r'\b' + name + r'=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))', re.I|re.S).search(tag)
 		if matches:
-			return matches.group(2)
+			return (matches.group(1) or matches.group(2) or matches.group(3))
 
 		return None
 
@@ -1163,12 +1164,12 @@ class Sifter:
 		@param	string	value    Value of attribute to set
 		@param	bool	verbose  If this parameter is True, "checked" and "selected" attributes are output verbosely
 		"""
-		pattern = r'\b' + name + r'=(\'|"|\b)[^\1]*?\1(\s|\/?>)'
+		pattern = r'\b' + name + r'=(?:\"[^\"]*\"|\'[^\']*\'|[^>\s]*)'
 		attr = name + (r'="' + value + r'"' if verbose else '')
 		if re.compile(pattern, re.I|re.S).search(tag):
-			ret = re.compile(pattern, re.I|re.S).sub(attr + r'\2', tag)
+			ret = re.compile(pattern, re.I|re.S).sub(attr, tag)
 		else:
-			ret = re.compile(r'<([^\/]+?)(\s*\/?)>', re.S).sub(r'<\1 ' + attr + r'\2>', tag)
+			ret = re.compile(r'(<' + SIFTER_TAG_EXPRESSION + r'*?)(\s*\/>|>)', re.S).sub(r'\1 ' + attr + r'\2', tag, 1)
 
 		return ret
 
@@ -1211,7 +1212,7 @@ class Sifter:
 						str = Sifter._set_attribute(str, 'checked', 'checked', verbose)
 					else:
 						str = re.compile(r'(<input.*)\s+checked(?:=(\"|\'|\b)checked\2)?(\s*\/?>)', re.I|re.S).sub(
-							r'\1\3', str
+							r'\1\3', str, 1
 						)
 				else:
 					str = Sifter._set_attribute(str, 'value', values[name])
@@ -1219,11 +1220,11 @@ class Sifter:
 			name = Sifter._get_element_id(str)
 			if name in values:
 				str = re.compile(r'(<textarea\b.*?>).*?(<\/textarea>)', re.I|re.S).sub(
-					lambda matches: matches.group(1) + values[name] + matches.group(2), str
+					lambda matches: matches.group(1) + values[name] + matches.group(2), str, 1
 				)
 		elif element.lower() == 'select':
 			if SIFTER_SELECT_NAME == '':
-				SIFTER_SELECT_NAME = re.sub(r'\[\]$', '', Sifter._get_element_id(str))
+				SIFTER_SELECT_NAME = re.sub(r'\[\]$', '', Sifter._get_element_id(str), 1)
 		elif element.lower() == '/select':
 			SIFTER_SELECT_NAME = ''
 		elif element.lower() == 'option':
@@ -1241,7 +1242,7 @@ class Sifter:
 					str = Sifter._set_attribute(str, 'selected', 'selected', verbose)
 				else:
 					str = re.compile(r'(<option.*)\s+selected(?:=(\"|\'|\b)selected\2)?(\s*\/?>)', re.I|re.S).sub(
-						r'\1\3', str
+						r'\1\3', str, 1
 					)
 
 		return str
@@ -1313,7 +1314,7 @@ class Sifter:
 				value = re.sub(r'(\r?\n)', r'<br />\1', value)
 			if options.find('q') >= 0:
 				# Escape quotes, backslashes and linebreaks
-				value = re.sub(r'([\'\"\\]|&quot;)', lambda matches: '\\' + matches.group(1), value)
+				value = re.sub(r'([\"\'\\]|&quot;)', lambda matches: '\\' + matches.group(1), value)
 				value = re.sub(r'\r', r'\\r', value)
 				value = re.sub(r'\n', r'\\n', value)
 

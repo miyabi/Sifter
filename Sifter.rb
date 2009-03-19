@@ -4,7 +4,7 @@
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.6
+# @version		1.1.7
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -86,14 +86,15 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 module SifterModule
 
 ################ Constant variables
-SIFTER_VERSION = '1.0106'
+SIFTER_VERSION = '1.0107'
 SIFTER_PACKAGE = 'Sifter'
 
 SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?'
 SIFTER_CONTROL_EXPRESSION = '((END_)?(' + SIFTER_AVAILABLE_CONTROLS + '))(?:\((.*?)\))?'
 SIFTER_DECIMAL_EXPRESSION = '-?(?:\d*?\.\d+|\d+\.?)'
 SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*' + SIFTER_DECIMAL_EXPRESSION + ')?(,\d*)?((?:\:|\/)\w+)?'
-SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>'
+SIFTER_TAG_EXPRESSION = '(?:[^\"\'>]|\"[^\"]*\"|\'[^\']*\')'
+SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)' + SIFTER_TAG_EXPRESSION + '*>|<option' + SIFTER_TAG_EXPRESSION + '*>.*?(?:<\/option>|[\r\n])|<textarea' + SIFTER_TAG_EXPRESSION + '*>.*?<\/textarea>'
 SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)'
 
 
@@ -1077,8 +1078,8 @@ class Sifter
 	# @param	string	name  Name of attribute to extract
 	##
 	def self._get_attribute(tag, name)
-		if(/\b#{name}=(\'|\"|\b)([^\1]*?)\1(?:\s|\/?>)/im.match(tag))
-			return Regexp.last_match[2]
+		if(/\b#{name}=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))/im.match(tag))
+			return (Regexp.last_match[1] || Regexp.last_match[2] || Regexp.last_match[3])
 		end
 
 		return nil
@@ -1094,12 +1095,12 @@ class Sifter
 	# @param	bool	verbose  If this parameter is true, "checked" and "selected" attributes are output verbosely
 	##
 	def self._set_attribute(tag, name, value, verbose=true)
-		pattern = '\b' + name + '=(\'|"|\b)[^\1]*?\1(\s|\/?>)'
+		pattern = '\b' + name + '=(?:\"[^\"]*\"|\'[^\']*\'|[^>\s]*)'
 		attr = name + ((verbose)? '="' + value + '"': '')
 		if(/#{pattern}/im.match(tag))
-			ret = tag.gsub(/#{pattern}/im, attr + '\\2')
+			ret = tag.gsub(/#{pattern}/im, attr)
 		else
-			ret = tag.sub(/<([^\/]+?)(\s*\/?)>/m, '<\\1 ' + attr + '\\2>')
+			ret = tag.sub(/(<#{SIFTER_TAG_EXPRESSION}*?)(\s*\/>|>)/m, '\\1 ' + attr + '\\2')
 		end
 
 		return ret
@@ -1238,7 +1239,7 @@ class Sifter
 			end
 			if(!options.index('q').nil?)
 				# Escape quotes, backslashes and linebreaks
-				value = value.gsub(/([\'\"\\]|&quot;)/) {'\\' + Regexp.last_match[1]}
+				value = value.gsub(/([\"\'\\]|&quot;)/) {'\\' + Regexp.last_match[1]}
 				value = value.gsub(/\r/, '\\r')
 				value = value.gsub(/\n/, '\\n')
 			end

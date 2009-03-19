@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.6
+# @version		1.1.7
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -93,7 +93,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use vars qw(@ISA $VERSION $PACKAGE);
 use vars qw(
 	$SIFTER_AVAILABLE_CONTROLS $SIFTER_CONTROL_EXPRESSION $SIFTER_DECIMAL_EXPRESSION
-	$SIFTER_REPLACE_EXPRESSION $SIFTER_EMBED_EXPRESSION $SIFTER_CONDITIONAL_EXPRESSION
+	$SIFTER_REPLACE_EXPRESSION $SIFTER_TAG_EXPRESSION $SIFTER_EMBED_EXPRESSION $SIFTER_CONDITIONAL_EXPRESSION
 	$SIFTER_CONTROL_TAG_BGN $SIFTER_CONTROL_TAG_END $SIFTER_CONTROL_PATTERN
 	$SIFTER_REPLACE_TAG_BGN $SIFTER_REPLACE_TAG_END $SIFTER_REPLACE_PATTERN
 	$SIFTER_SELECT_NAME
@@ -101,14 +101,15 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0106';
+$VERSION = '1.0107';
 $PACKAGE = 'Sifter';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
 $SIFTER_CONTROL_EXPRESSION = '((END_)?('.$SIFTER_AVAILABLE_CONTROLS.'))(?:\((.*?)\))?';
 $SIFTER_DECIMAL_EXPRESSION = '-?(?:\d*?\.\d+|\d+\.?)';
 $SIFTER_REPLACE_EXPRESSION = '(#?[A-Za-z_]\w*?)(\s*[\+\-\*\/%]\s*'.$SIFTER_DECIMAL_EXPRESSION.')?(,\d*)?((?:\:|\/)\w+)?';
-$SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)\b.*?>|<option\b.*?>.*?(?:<\/option>|[\r\n])|<textarea\b.*?>.*?<\/textarea>';
+$SIFTER_TAG_EXPRESSION = '(?:[^\"\'>]|\"[^\"]*\"|\'[^\']*\')';
+$SIFTER_EMBED_EXPRESSION = '<(?:input|\/?select)'.$SIFTER_TAG_EXPRESSION.'*>|<option'.$SIFTER_TAG_EXPRESSION.'*>.*?(?:<\/option>|[\r\n])|<textarea'.$SIFTER_TAG_EXPRESSION.'*>.*?<\/textarea>';
 $SIFTER_CONDITIONAL_EXPRESSION = '((?:[^\'\?]+|(?:\'(?:\\\\.|[^\'])*?\'))+)\?\s*((?:\\\\.|[^:])*)\s*:\s*(.*)';
 
 $SIFTER_CONTROL_TAG_BGN = '<!--@';
@@ -331,7 +332,7 @@ sub _parse#()
 		}
 
 		my $type = (defined($matches[5])? $matches[5]: '');
-		(my $param = (defined($matches[6])? $matches[6]: '')) =~ s/^\s+|\s+$//;
+		(my $param = (defined($matches[6])? $matches[6]: '')) =~ s/^\s+|\s+$//g;
 
 		if($matches[4])
 		{
@@ -1255,7 +1256,7 @@ sub _construct_var
 
 	if(!ref($value))
 	{
-		$this->_convert_html_entities(\$value) if(defined($convert_html) && $convert_html);
+		Sifter::_convert_html_entities(\$value) if(!defined($convert_html) || $convert_html);
 		${$var} = $value;
 	}
 	elsif(ref($value) eq 'REF')
@@ -1268,7 +1269,7 @@ sub _construct_var
 		foreach $key (0..$#{$value})
 		{
 			${${$var}}[$key] = undef;
-			$this->_construct_var(\${${$var}}[$key], ${$value}[$key]);
+			$this->_construct_var(\${${$var}}[$key], ${$value}[$key], $convert_html);
 		}
 	}
 	elsif(ref($value) eq 'HASH')
@@ -1277,7 +1278,7 @@ sub _construct_var
 		foreach $key (keys(%{$value}))
 		{
 			${${$var}}{$key} = undef;
-			$this->_construct_var(\${${$var}}{$key}, ${$value}{$key});
+			$this->_construct_var(\${${$var}}{$key}, ${$value}{$key}, $convert_html);
 		}
 	}
 }
@@ -1588,9 +1589,9 @@ sub _get_attribute#($tag, $name)
 	my $tag = shift;
 	my $name = shift;
 
-	if($tag =~ /\b$name=(\'|\"|\b)([^\1]*?)\1(?:\s|\/?>)/is)
+	if($tag =~ /\b$name=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))/is)
 	{
-		return $2;
+		return ($1 || $2 || $3);
 	}
 
 	return undef;
@@ -1617,9 +1618,9 @@ sub _set_attribute#($tag, $name, $value, $verbose=true)
 	my $ret;
 
 	my $attr = $name.($verbose? '="'.$value.'"': '');
-	if(!(($ret = $tag) =~ s/\b$name=(\'|\"|\b)[^\1]*?\1(\s|\/?>)/$attr$2/gis))
+	if(!(($ret = $tag) =~ s/\b$name=(?:\"[^\"]*\"|\'[^\']*\'|[^>\s]*)/$attr/gis))
 	{
-		($ret = $tag) =~ s/<([^\/]+?)(\s*\/?)>/<$1 $attr$2>/s;
+		($ret = $tag) =~ s/(<$SIFTER_TAG_EXPRESSION*?)(\s*\/>|>)/$1 $attr$2/s;
 	}
 
 	return $ret;
@@ -1834,7 +1835,7 @@ sub _format_callback#($value, $comma='', $options='')
 		if(index($options, 'q') >= 0)
 		{
 			# Escape quotes, backslashes and linebreaks
-			$value =~ s/([\'\"\\]|&quot;)/\\$1/g;
+			$value =~ s/([\"\'\\]|&quot;)/\\$1/g;
 			$value =~ s/\r/\\r/g;
 			$value =~ s/\n/\\n/g;
 		}
@@ -1885,7 +1886,7 @@ sub _format
 sub format#($format, &$replace)
 {
 	my $this = shift;
-	my $format = (ref($this)? shift: $this);
+	my $format = ((ref($this) eq 'Sifter')? shift: $this);
 	my $replace = shift;
 
 	$format =~ s/$SIFTER_REPLACE_PATTERN/Sifter::_format($replace, $1, $2, $3, $4)/eg;
