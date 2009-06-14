@@ -4,7 +4,7 @@
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.7
+# @version		1.1.8
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -86,7 +86,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 module SifterModule
 
 ################ Constant variables
-SIFTER_VERSION = '1.0107'
+SIFTER_VERSION = '1.0108'
 SIFTER_PACKAGE = 'Sifter'
 
 SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?'
@@ -1259,7 +1259,7 @@ class Sifter
 		return format.gsub(/#{@@SIFTER_REPLACE_PATTERN}/) {
 			Sifter._format_callback(
 				Regexp.last_match[2]? 
-					eval(replace[Regexp.last_match[1]].to_s + Regexp.last_match[2] + '.to_f').to_s: 
+					eval("'" + replace[Regexp.last_match[1]].to_s + "'.to_f" + Regexp.last_match[2] + ".to_f").to_s: 
 					replace[Regexp.last_match[1]].to_s, 
 				Regexp.last_match[3], Regexp.last_match[4]
 			)

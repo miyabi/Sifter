@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.7
+ * @version		1.1.8
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,7 +89,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Constant variables
-define('SIFTER_VERSION', '1.0107');
+define('SIFTER_VERSION', '1.0108');
 define('SIFTER_PACKAGE', 'Sifter');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
@@ -1362,7 +1362,7 @@ class Sifter
 	function _get_attribute($tag, $name)
 	{
 		if(preg_match('/\b'.$name.'=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))/is', $tag, $matches))
-			return ($matches[1] ? $matches[1]: ($matches[2]? $matches[2]: $matches[3]));
+			return (isset($matches[1])? $matches[1]: (isset($matches[2])? $matches[2]: $matches[3]));
 
 		return null;
 	}

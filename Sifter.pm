@@ -9,7 +9,7 @@ use strict;
 # $Id$
 # 
 # @package		Sifter
-# @version		1.1.7
+# @version		1.1.8
 # @author		Masayuki Iwai <miyabi@mybdesign.com>
 # @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
 # @license		BSD license
@@ -101,7 +101,7 @@ use vars qw(
 );
 
 @ISA = qw();
-$VERSION = '1.0107';
+$VERSION = '1.0108';
 $PACKAGE = 'Sifter';
 
 $SIFTER_AVAILABLE_CONTROLS = 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?';
@@ -1591,7 +1591,7 @@ sub _get_attribute#($tag, $name)
 
 	if($tag =~ /\b$name=(?:\"([^\"]*)\"|\'([^\']*)\'|([^\s\/>]*))/is)
 	{
-		return ($1 || $2 || $3);
+		return (defined($1)? $1: defined($2)? $2: $3);
 	}
 
 	return undef;
