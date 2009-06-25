@@ -6,7 +6,7 @@
  * $Id$
  * 
  * @package		Sifter
- * @version		1.1.8
+ * @version		1.1.9
  * @author		Masayuki Iwai <miyabi@mybdesign.com>
  * @copyright	Copyright &copy; 2005-2009 Masayuki Iwai all rights reserved.
  * @license		BSD license
@@ -89,7 +89,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 //////////////// Constant variables
-define('SIFTER_VERSION', '1.0108');
+define('SIFTER_VERSION', '1.0109');
 define('SIFTER_PACKAGE', 'Sifter');
 
 define('SIFTER_AVAILABLE_CONTROLS', 'LOOP|FOR|IF|ELSE|EMBED|NOBREAK|LITERAL|INCLUDE|\?');
@@ -1150,7 +1150,10 @@ class Sifter
 			{
 				$replace['#'.$key.'_count'] = count($replace[$key]);
 				for($i=0; $i<count($replace[$key]); $i++)
-					$this->_set_loop_count($replace[$key][$i]);
+				{
+					if(isset($replace[$key][$i]) && is_array($replace[$key][$i]))
+						$this->_set_loop_count($replace[$key][$i]);
+				}
 			}
 		}
 	}
